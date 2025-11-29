@@ -1,0 +1,54 @@
+{
+    "BikeShare Data Streaming Report.pdf": {
+        "tools_used": ["Google Cloud Platform (GCP)", "Python"], 
+        "skills": ["data engineering", "ETL pipelines", "SQL", "data visualization", "big data", "cloud", "data streaming", "api integration"]
+    },
+    "BikeShare Data Streaming.md": {
+        "tools_used": ["Google Cloud Platform (GCP)", "Python"], 
+        "skills": ["data engineering", "ETL pipelines", "SQL", "data visualization", "big data", "cloud", "data streaming", "api integration"]
+    },
+    "Chatbot for Academic Support to University Students.md": {
+        "tools_used": ["Python", "Ollama", "LangChain", "Selenium", "Pandas"], 
+        "skills": ["NLP", "prompt engineering", "chatbots", "large language models", "information retrieval", "RAG", "web scraping", "embdedings", "vector databases"]
+    },
+    "Learning Diary.md": {
+        "tools_used": ["SAS BI Dashboard", "Markdown"], 
+        "skills": ["Design Thinking", "Problem Solving", "Empathy", "User-Centered Design", "Creativity", "Ideation", "Communication", "Teamwork", "Prototyping", "Critical Thinking"]
+    },
+    "MarketFlow.md": {
+        "tools_used": ["Google Cloud Platform (GCP)", "Python", "dbt (Data Build Tool)", "PySpark", "Git", "Scikit-learn"], 
+        "skills": ["Data Engineering", "Cloud Architecture & DevOps", "Data Transformation", "Data Modeling", "Automation", "Reporting", "Analytical Thinking"]
+    },
+    "Responsible AI.md": {
+        "tools_used": ["Python", "SHAP", "Datasheet", "Model Card", "EU AI Act"], 
+        "skills": ["explainable AI", "model interpretability", "ethical AI", "fairness in machine learning", "Responsible AI", "AI Governance", "Fairness Evaluation", "Ethics, Privacy & Security"]
+    },
+    "Table Extractor-Making tables searchable for LLMs.md": {
+        "tools_used": ["Python", "Tesseract", "EasyOCR", "Multimodal LLM", "Video Language Models (VLM)", "PyTorch", "JSON", "Hugging Face Transformers"], 
+        "skills": ["NLP", "Computer Vision", "OCR", "Large Language Models", "prompt engineering", "evaluation", "architecture diagrams", "sequence flows"]
+    },
+    "Table Extractor-Making tables searchable for LLMs - Pipeline.md": {
+        "tools_used": ["Python", "Tesseract", "EasyOCR", "Multimodal LLM", "Video Language Models (VLM)", "PyTorch", "JSON", "Hugging Face Transformers"], 
+        "skills": ["NLP", "Computer Vision", "OCR", "Large Language Models", "prompt engineering", "evaluation", "architecture diagrams", "sequence flows"]
+    },
+    "Thesis - Layout Aware Metadata Extraction Framework Full Report.pdf": {
+        "tools_used": ["Python", "Hugging Face Transformers", "GROBID", "Pydantic", "Docker", "YOLO", "uv", "latex"], 
+        "skills": ["research", "prompt engineering", "small language models", "Computer Vision", "NLP", "data annotation", "model evaluation", "quantization", "benchmarking"]
+    },
+    "Thesis - Layout Aware Metadata Extraction Framework.md": {
+        "tools_used": ["Python", "Hugging Face Transformers", "GROBID", "Pydantic", "Docker", "YOLO", "uv", "latex"], 
+        "skills": ["research", "prompt engineering", "small language models", "Computer Vision", "NLP", "data annotation", "model evaluation", "quantization", "benchmarking"]
+    },
+    "Thesis - Layout Aware Metadata Extraction Framework Code Documentation.md": {
+        "tools_used": ["Python", "Hugging Face Transformers", "GROBID", "Pydantic", "Docker", "YOLO", "uv", "latex"], 
+        "skills": ["research", "prompt engineering", "small language models", "Computer Vision", "NLP", "data annotation", "model evaluation", "quantization", "benchmarking"]
+    },
+    "TUI Cruise Ships Analysis.md": {
+        "tools_used": ["Python", "Pandas", "Matplotlib", "Seaborn", "Numpy", "XGBoost", "Jupyter Notebook"], 
+        "skills": ["Feature Engineering", "Classification", "Clustering", "Regression", "machine learning", "Interpretability", "Scientific Reporting", "KMeans", "PCA", "Random Forest", "Data Visualization"]
+    },
+    "Working Student Report.pdf": {
+        "tools_used": ["Python", "Jira", "Vertex AI", "RAG", "AI Agents", "LangChain", "LangGraph", "LlamaIndex", "n8n", "MLFlow", "Git", "Docker"], 
+        "skills": ["generative ai", "prompt engineering", "RAG", "AI Agents", "large language models", "NLP", "data engineering", "MLOps", "workflow automation", "Agentic RAG", "communication", "teamwork", "code documentation", "evaluation", "benchmarking"]
+    }
+}
