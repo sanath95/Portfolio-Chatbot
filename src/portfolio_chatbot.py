@@ -40,7 +40,6 @@ agent = Agent('openai:gpt-5', deps_type=Deps)
 @agent.instructions
 def get_system_instructions(ctx: RunContext[Deps]) -> str:
     system_instructions = f"{ctx.deps.instructions_template}\n---\n## Resume\n{ctx.deps.resume}\n---\n## About Sanath\n{ctx.deps.about_me}"
-    print(system_instructions)
     return system_instructions
 
 @agent.tool
