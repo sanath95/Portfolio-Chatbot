@@ -1,5 +1,3 @@
-## About Me
-
 ### Overview
 
 * MSc in *Applied Data Science and Analytics*
