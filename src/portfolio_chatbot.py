@@ -1,8 +1,10 @@
 from dataclasses import dataclass
 import asyncio
+from typing import Dict
 
 from langchain_qdrant import QdrantVectorStore
-from pydantic_ai import Agent, ModelResponse, RunContext, TextPart
+from pydantic_ai import Agent, RunContext
+from sentence_transformers import CrossEncoder
 
 from utils.vector_store import VectorStore
 
@@ -41,6 +43,22 @@ def get_system_instructions(ctx: RunContext[Deps]) -> str:
     print(system_instructions)
     return system_instructions
 
+@agent.tool
+async def retrieve(context: RunContext[Deps], search_query: str) -> Dict[str, float]:
+    """Retrieve documentation sections based on a search query.
+
+    Args:
+        context: The call context.
+        search_query: The search query.
+    """
+    retriever = context.deps.vector_store.as_retriever(search_type="mmr", search_kwargs={"k": 10})
+    results = await retriever.ainvoke(search_query)
+
+    input_for_cross_encoder = [(search_query, r.page_content) for r in results]
+    model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+    scores = model.predict(input_for_cross_encoder)
+    result = {s: float(v) for s, v in zip([r.page_content for r in results], scores) if v > 0}
+    return result
 
 async def run_agent(prompt):
     resp = await agent.run(prompt, deps=deps)
