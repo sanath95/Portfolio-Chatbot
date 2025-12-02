@@ -26,8 +26,6 @@ class VectorStore:
         return qdrant
     
     def __create_vector_store(self):
-        print("Creating Vector Store Collection")
-
         index_helper = FileProcessorForIndexing()
         file_texts = index_helper.process_all_files()
         documents = index_helper.chunk_all_files(file_texts)
@@ -42,8 +40,6 @@ class VectorStore:
         return qdrant
     
     def __get_vector_store(self):
-        print("Collection exists")
-
         qdrant = QdrantVectorStore.from_existing_collection(
             embedding=OpenAIEmbeddings(model="text-embedding-3-large"),
             collection_name="sanath_projects_latest",
