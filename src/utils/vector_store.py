@@ -4,8 +4,49 @@ from pathlib import Path
 from re import compile, MULTILINE
 from pymupdf import Document as PdfDocument
 
+from qdrant_client import QdrantClient
+from langchain_openai import OpenAIEmbeddings
+from langchain_qdrant import QdrantVectorStore
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
+
+class VectorStore:
+    def __init__(self, url="http://localhost:6333", port=6333):
+        self.url = url
+        self.port = port
+
+    def get_vector_store(self):
+        client = QdrantClient(url=self.url,port=self.port)
+        
+        if not client.collection_exists("sanath_projects_latest"):
+            qdrant = self.__create_vector_store()
+        else:
+            qdrant = self.__get_vector_store()
+
+        return qdrant
+    
+    def __create_vector_store(self):
+        index_helper = FileProcessorForIndexing()
+        file_texts = index_helper.process_all_files()
+        documents = index_helper.chunk_all_files(file_texts)
+        qdrant = QdrantVectorStore.from_documents(
+            documents,
+            embedding=OpenAIEmbeddings(model="text-embedding-3-large"),
+            collection_name="sanath_projects_latest",
+            url=self.url,
+            port=self.port
+        )
+
+        return qdrant
+    
+    def __get_vector_store(self):
+        qdrant = QdrantVectorStore.from_existing_collection(
+            embedding=OpenAIEmbeddings(model="text-embedding-3-large"),
+            collection_name="sanath_projects_latest",
+            url=self.url,
+            port=self.port
+        )
+        return qdrant
 
 class FileProcessorForIndexing:
     def __init__(self):
