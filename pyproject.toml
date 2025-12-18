@@ -5,6 +5,9 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "docling>=2.65.0",
+    "easyocr>=1.7.2",
+    "ipywidgets>=8.1.8",
     "langchain-experimental>=0.4.0",
     "langchain-openai>=1.0.2",
     "langchain-qdrant>=1.1.0",
@@ -15,9 +18,24 @@ dependencies = [
     "pymupdf>=1.26.6",
     "python-dotenv>=1.2.1",
     "sentence-transformers>=5.1.2",
+    "torch>=2.9.1",
+    "torchvision>=0.24.1",
 ]
 
 [dependency-groups]
 dev = [
     "ipykernel>=7.1.0",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cu128", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+torchvision = [
+  { index = "pytorch-cu128", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
 ]
