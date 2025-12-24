@@ -63,3 +63,8 @@ def init_tracker(config: LangfuseConfig) -> LangfuseTracker:
     global _tracker
     _tracker = LangfuseTracker(config)
     return _tracker
+
+
+def get_tracker() -> Optional[LangfuseTracker]:
+    """Get the global tracker instance."""
+    return _tracker

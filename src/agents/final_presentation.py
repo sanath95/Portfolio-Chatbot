@@ -7,6 +7,7 @@ from langfuse import observe
 
 from src.config import AgentConfig
 from src.models.schemas import EvidenceBundle, OrchestratorRoute
+from src.tools.tracking import get_tracker
 
 
 class FinalPresentationAgent:
@@ -18,6 +19,7 @@ class FinalPresentationAgent:
     Attributes:
         config: Agent configuration.
         client: AsyncOpenAI client for API calls.
+        tracker: Langfuse tracker instance.
         instructions: System instructions for the agent.
     """
 
@@ -29,6 +31,7 @@ class FinalPresentationAgent:
         """
         self.config = config
         self.client = AsyncOpenAI()
+        self.tracker = get_tracker()
         self.instructions = self._load_instructions()
 
     @observe(name="final_presentation_agent")
@@ -108,6 +111,8 @@ class FinalPresentationAgent:
         Returns:
             System instructions text.
         """
+        if self.tracker and self.tracker.client:
+            return self.tracker.client.get_prompt(self.config.final_presentation_instructions_langfuse_path).compile()
         return self.config.final_presentation_instructions_path.read_text(
             encoding="utf-8"
         )

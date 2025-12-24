@@ -7,6 +7,7 @@ from langfuse import observe
 
 from src.config import AgentConfig
 from src.models.schemas import OrchestratorRoute
+from src.tools.tracking import get_tracker
 
 
 class OrchestratorAgent:
@@ -18,6 +19,7 @@ class OrchestratorAgent:
     Attributes:
         config: Agent configuration.
         client: AsyncOpenAI client for API calls.
+        tracker: Langfuse tracker instance.
         instructions: System instructions for the agent.
     """
 
@@ -29,6 +31,7 @@ class OrchestratorAgent:
         """
         self.config = config
         self.client = AsyncOpenAI()
+        self.tracker = get_tracker()
         self.instructions = self._load_instructions()
 
     @observe(name="orchestrator_agent")
@@ -62,9 +65,11 @@ class OrchestratorAgent:
         raise Exception(f"OrchestratorAgent failed to parse response: {response}")
 
     def _load_instructions(self) -> str:
-        """Load system instructions from file.
+        """Load system instructions from langfuse or file.
         
         Returns:
             System instructions text.
         """
+        if self.tracker and self.tracker.client:
+            return self.tracker.client.get_prompt(self.config.orchestrator_instructions_langfuse_path).compile()
         return self.config.orchestrator_instructions_path.read_text(encoding="utf-8")

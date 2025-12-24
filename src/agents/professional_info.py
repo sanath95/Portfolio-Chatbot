@@ -9,6 +9,7 @@ from langfuse import observe
 from src.config import AgentConfig
 from src.models.schemas import EvidenceBundle
 from src.tools.retrieval import RetrievalDeps, retrieve_and_rerank
+from src.tools.tracking import get_tracker
 
 
 class ProfessionalInfoAgent:
@@ -29,6 +30,7 @@ class ProfessionalInfoAgent:
             config: Agent configuration.
         """
         self.config = config
+        self.tracker = get_tracker()
         self.instructions = self._load_instructions()
         self.agent: Agent[RetrievalDeps, EvidenceBundle] = self._create_agent()
         self._register_tools()
@@ -153,11 +155,13 @@ class ProfessionalInfoAgent:
             return await retrieve_and_rerank(context.deps, search_query)
 
     def _load_instructions(self) -> str:
-        """Load system instructions from file.
+        """Load system instructions from langfuse or file.
         
         Returns:
             System instructions text.
         """
+        if self.tracker and self.tracker.client:
+            return self.tracker.client.get_prompt(self.config.professional_info_instructions_langfuse_path).compile()
         return self.config.professional_info_instructions_path.read_text(
             encoding="utf-8"
         )

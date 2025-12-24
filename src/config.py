@@ -61,6 +61,9 @@ class AgentConfig:
     orchestrator_instructions_path: Path = Path("./prompts/orchestrator.txt")
     professional_info_instructions_path: Path = Path("./prompts/professional_info.txt")
     final_presentation_instructions_path: Path = Path("./prompts/final_presentation.txt")
+    orchestrator_instructions_langfuse_path: str = "instructions/orchestrator"
+    professional_info_instructions_langfuse_path: str = "instructions/professional_info"
+    final_presentation_instructions_langfuse_path: str = "instructions/final_presentation"
     resume_path: Path = Path("./prompts/Sanath Vijay Haritsa - CV.tex")
     about_me_path: Path = Path("./prompts/Sanath Vijay Haritsa - About Me.md")
 
