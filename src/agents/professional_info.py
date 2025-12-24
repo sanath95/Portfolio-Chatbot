@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pydantic_ai import Agent, RunContext
 from aiofiles import open as aopen
+from langfuse import observe
 
 from src.config import AgentConfig
 from src.models.schemas import EvidenceBundle
@@ -32,6 +33,7 @@ class ProfessionalInfoAgent:
         self.agent: Agent[RetrievalDeps, EvidenceBundle] = self._create_agent()
         self._register_tools()
 
+    @observe(name="professional_info_agent")
     async def run(
         self, user_prompt: str, deps: RetrievalDeps
     ) -> EvidenceBundle:
@@ -67,6 +69,7 @@ class ProfessionalInfoAgent:
         """Register tools with the agent."""
 
         @self.agent.tool_plain
+        @observe(name="resume")
         async def read_resume() -> str:
             """Return the full text of Sanath’s resume.
 
@@ -86,6 +89,7 @@ class ProfessionalInfoAgent:
                 return await f.read()
 
         @self.agent.tool_plain
+        @observe(name="about_sanath")
         async def read_about_sanath() -> str:
             """Return the narrative 'About Sanath' profile text.
 
@@ -106,6 +110,7 @@ class ProfessionalInfoAgent:
                 return await f.read()
 
         @self.agent.tool
+        @observe(name="retrieve")
         async def retrieve(
             context: RunContext[RetrievalDeps], search_query: str
         ) -> list[str]:

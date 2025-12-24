@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from openai import AsyncOpenAI
+from langfuse import observe
 
 from src.config import AgentConfig
 from src.models.schemas import OrchestratorRoute
@@ -30,6 +31,7 @@ class OrchestratorAgent:
         self.client = AsyncOpenAI()
         self.instructions = self._load_instructions()
 
+    @observe(name="orchestrator_agent")
     async def run(self, user_message: str) -> OrchestratorRoute:
         """Process a user message and determine routing.
         

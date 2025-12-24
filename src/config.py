@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from os import getenv
 
 from dotenv import load_dotenv
 
@@ -79,6 +80,26 @@ class RetrievalConfig:
     reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     reranker_threshold: float = 0.0
 
+    
+@dataclass(frozen=True)
+class LangfuseConfig:
+    """Configuration for Langfuse tracking.
+    
+    Attributes:
+        enabled: Whether to enable Langfuse tracking.
+        public_key: Langfuse public key.
+        secret_key: Langfuse secret key.
+        host: Langfuse host URL.
+    """
+    enabled: bool = True
+    public_key: str = getenv("LANGFUSE_PUBLIC_KEY", "")
+    secret_key: str = getenv("LANGFUSE_SECRET_KEY", "")
+    host: str = getenv("LANGFUSE_HOST", "http://localhost:3000")
+    
+    def is_configured(self) -> bool:
+        """Check if Langfuse is properly configured."""
+        return bool(self.public_key and self.secret_key)
+    
 
 @dataclass(frozen=True)
 class AppConfig:
@@ -89,8 +110,10 @@ class AppConfig:
         processor: Document processor configuration.
         agent: Agent configuration.
         retrieval: Retrieval configuration.
+        langfuse: Langfuse tracking configuration.
     """
     vector_store: VectorStoreConfig = VectorStoreConfig()
     processor: ProcessorConfig = ProcessorConfig()
     agent: AgentConfig = AgentConfig()
     retrieval: RetrievalConfig = RetrievalConfig()
+    langfuse: LangfuseConfig = LangfuseConfig()

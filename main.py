@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from langfuse import observe, get_client
 
 from src.agents.final_presentation import FinalPresentationAgent
 from src.agents.orchestrator import OrchestratorAgent
@@ -10,6 +11,7 @@ from src.agents.professional_info import ProfessionalInfoAgent
 from src.config import AppConfig
 from src.models.schemas import DownstreamAgent
 from src.tools.retrieval import create_retrieval_deps
+from src.tools.tracking import init_tracker
 from src.vector_store.store import ProjectsVectorStore
 
 
@@ -34,6 +36,14 @@ class PortfolioChatbot:
             config: Application configuration. Uses defaults if not provided.
         """
         self.config = config or AppConfig()
+        
+        # Initialize Langfuse tracking
+        self.tracker = init_tracker(self.config.langfuse)
+        if self.tracker.is_enabled():
+            print("✓ Langfuse tracking enabled")
+            print(f"  Dashboard: {self.config.langfuse.host}")
+        else:
+            print("✗ Langfuse tracking disabled (not configured)")
 
         # Initialize agents
         self.orchestrator = OrchestratorAgent(self.config.agent)
@@ -65,6 +75,7 @@ class PortfolioChatbot:
         # Create retrieval dependencies
         return create_retrieval_deps(retriever, self.config.retrieval)
 
+    @observe(name="process_query")
     async def process_query(self, user_query: str) -> str:
         """Process a user query through the agent pipeline.
         
@@ -74,6 +85,11 @@ class PortfolioChatbot:
         Returns:
             Final response text.
         """
+        # Add custom metadata to the trace
+        langfuse_context = get_client()
+        langfuse_context.update_current_trace(
+            user_id="demo_user"
+        )
         # Step 1: Route the query
         orchestrator_output = await self.orchestrator.run(user_query)
 
@@ -92,9 +108,15 @@ class PortfolioChatbot:
                 print("Public persona agent not yet implemented")
 
         # Step 3: Generate final response
-        return await self.final_presentation.run(
+        final_response = await self.final_presentation.run(
             user_query, evidence_bundle, orchestrator_output
         )
+        
+        # Flush traces to Langfuse
+        if self.tracker.is_enabled():
+            self.tracker.flush()
+            
+        return final_response
 
     @staticmethod
     def _format_professional_info_prompt(
