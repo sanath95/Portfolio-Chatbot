@@ -122,6 +122,7 @@ class ProfessionalInfoAgent:
             - Use only essential keywords
             - Keep the query short and specific
             - Never include Sanath’s name
+            - Do not include model names, or technology that are not specified in the user query
 
             **How NOT to formulate the query**
             - Do not broaden the query beyond what was asked
