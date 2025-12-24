@@ -86,10 +86,11 @@ class PortfolioChatbot:
             Final response text.
         """
         # Add custom metadata to the trace
-        langfuse_context = get_client()
-        langfuse_context.update_current_trace(
-            user_id="demo_user"
-        )
+        if self.tracker.is_enabled():
+            self.tracker.update_current_trace(
+                user_id="demo_user"
+            )
+            
         # Step 1: Route the query
         orchestrator_output = await self.orchestrator.run(user_query)
 

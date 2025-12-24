@@ -42,6 +42,10 @@ class LangfuseTracker:
         if self.client:
             self.client.flush()
 
+    def update_current_trace(self, **kwargs) -> None:
+        """Update current trace with given keyword arguments"""
+        if self.client:
+            self.client.update_current_trace(**kwargs)
 
 # Global tracker instance
 _tracker: Optional[LangfuseTracker] = None
