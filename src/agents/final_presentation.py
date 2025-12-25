@@ -1,6 +1,7 @@
 """Final presentation agent for generating responses."""
 
 from __future__ import annotations
+from typing import AsyncGenerator
 
 from openai import AsyncOpenAI
 from langfuse import observe
@@ -40,8 +41,8 @@ class FinalPresentationAgent:
         user_query: str,
         evidence_bundle: EvidenceBundle | None,
         orchestrator_output: OrchestratorRoute,
-    ) -> str:
-        """Generate a final response from evidence and routing decisions.
+    ) -> AsyncGenerator[str, None]:
+        """Stream the final response from evidence and routing decisions.
         
         Args:
             user_query: The original user query.
@@ -55,19 +56,21 @@ class FinalPresentationAgent:
         input_content = self._format_input(
             user_query, evidence_bundle, orchestrator_output
         )
-
-        response = await self.client.responses.create(
+        async with self.client.responses.stream(
             model=self.config.final_presentation_model,
             instructions=self.instructions,
             input=[
                 {
                     "role": "user",
-                    "content": input_content,
-                },
-            ],
-        )
-
-        return response.output_text
+                    "content": input_content
+                }
+            ]
+        ) as stream:
+            async for event in stream:
+                if event.type == "response.output_text.delta":
+                    yield event.delta
+                if event.type == "response.completed":
+                    break
 
     def _format_input(
         self,
