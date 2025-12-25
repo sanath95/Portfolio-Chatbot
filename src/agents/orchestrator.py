@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from typing import List, Dict, cast
 from openai import AsyncOpenAI
+from openai.types.responses import ResponseInputParam
 from langfuse import observe
 
 from src.config import AgentConfig
@@ -35,11 +37,11 @@ class OrchestratorAgent:
         self.instructions = self._load_instructions()
 
     @observe(name="orchestrator_agent")
-    async def run(self, user_message: str) -> OrchestratorRoute:
+    async def run(self, conversation: List[Dict[str, str]]) -> OrchestratorRoute:
         """Process a user message and determine routing.
         
         Args:
-            user_message: The user's query.
+            conversation: List of user queries and generated responses over the past.
             
         Returns:
             Routing decision with downstream requests.
@@ -50,12 +52,7 @@ class OrchestratorAgent:
         response = await self.client.responses.parse(
             model=self.config.orchestrator_model,
             instructions=self.instructions,
-            input=[
-                {
-                    "role": "user",
-                    "content": user_message,
-                },
-            ],
+            input=cast(ResponseInputParam, conversation),
             text_format=OrchestratorRoute,
         )
 
