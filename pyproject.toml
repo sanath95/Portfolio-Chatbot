@@ -5,9 +5,9 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "aiofiles>=25.1.0",
     "docling>=2.65.0",
     "easyocr>=1.7.2",
+    "gradio>=6.2.0",
     "ipywidgets>=8.1.8",
     "langchain-experimental>=0.4.0",
     "langchain-openai>=1.0.2",

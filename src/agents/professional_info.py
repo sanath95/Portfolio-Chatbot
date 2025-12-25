@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pydantic_ai import Agent, RunContext
-from aiofiles import open as aopen
 from langfuse import observe
 
 from src.config import AgentConfig
@@ -72,7 +71,7 @@ class ProfessionalInfoAgent:
 
         @self.agent.tool_plain
         @observe(name="resume")
-        async def read_resume() -> str:
+        def read_resume() -> str:
             """Return the full text of Sanath’s resume.
 
             Use this tool when you need:
@@ -87,12 +86,11 @@ class ProfessionalInfoAgent:
             Returns:
                 resume: Full text of Sanath’s resume.
             """
-            async with aopen(self.config.resume_path, encoding="utf-8") as f:
-                return await f.read()
+            return self.config.resume_path.read_text(encoding="utf-8")
 
         @self.agent.tool_plain
         @observe(name="about_sanath")
-        async def read_about_sanath() -> str:
+        def read_about_sanath() -> str:
             """Return the narrative 'About Sanath' profile text.
 
             Use this tool when you need:
@@ -108,8 +106,7 @@ class ProfessionalInfoAgent:
             Returns:
                 about_me: Narrative profile text about Sanath.
             """
-            async with aopen(self.config.about_me_path, encoding="utf-8") as f:
-                return await f.read()
+            return self.config.about_me_path.read_text(encoding="utf-8")
 
         @self.agent.tool
         @observe(name="retrieve")
