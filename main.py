@@ -171,9 +171,10 @@ class ChatbotUI:
         """
         gr.Examples(
             examples=[
-                "What was Sanath’s final grade in his master’s program?",
-                "Introduce him briefly.",
-                "What are the contributions of the master's thesis?",
+                "Introduce Sanath in a few short sentences.",
+                "What was his final grade in his master's program?",
+                "What are his hobbies and interests?",
+                "Tell me the contributions of the master's thesis",
             ],
             inputs=input_textbox,
         )
