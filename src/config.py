@@ -120,3 +120,16 @@ class AppConfig:
     agent: AgentConfig = AgentConfig()
     retrieval: RetrievalConfig = RetrievalConfig()
     langfuse: LangfuseConfig = LangfuseConfig()
+    
+@dataclass(frozen=True)
+class GradioConfig:
+    """Gradio UI configuration
+    
+    Attributes:
+        header_html_path: Path for the chatbot header html.
+        footer_html_path: Path for the chatbot footer html.
+        image_path: Path for Sanath's photo.
+    """
+    header_html_path: Path = Path("./static/header.html")
+    footer_html_path: Path = Path("./static/footer.html")
+    image_path: Path = Path("./static/sanath_vijay_haritsa.png")
