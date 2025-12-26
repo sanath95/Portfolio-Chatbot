@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import AsyncGenerator, Any
 from random import choice
 import base64
-from pathlib import Path
 import gradio as gr
+from string import Template
 
 from src.agent_runner import AgentRunner
-
+from src.config import GradioConfig
 
 ChatHistory = list[dict[str, str]]
 GradioOutputs = tuple[gr.Textbox | dict[Any, Any], ChatHistory | dict[Any, Any], ChatHistory | dict[Any, Any]]
@@ -18,12 +18,14 @@ GradioOutputs = tuple[gr.Textbox | dict[Any, Any], ChatHistory | dict[Any, Any],
 class ChatbotUI:
     """Manages the Gradio UI for the portfolio chatbot."""
 
-    def __init__(self, agent: AgentRunner) -> None:
+    def __init__(self, agent: AgentRunner, config: GradioConfig | None = None) -> None:
         """Initialize the chatbot UI.
 
         Args:
+            config: Gradio configuration. Uses defaults if not provided.
             agent: The agent runner instance for processing queries.
         """
+        self.config = config or GradioConfig()
         self.agent = agent
 
     async def stream_response(
@@ -99,37 +101,24 @@ class ChatbotUI:
 
         return demo
 
-    @staticmethod
-    def _add_header() -> None:
+    def _add_header(self) -> None:
         """Render the header section of the UI.
 
         This includes the profile image, title, and subtitle displayed
         at the top of the chatbot interface.
         """
-        # Load and encode the local image
-        image_path = Path("assets/sanath_vijay_haritsa.png")
+        image_path = self.config.image_path
         if image_path.exists():
             with open(image_path, "rb") as f:
                 image_data = base64.b64encode(f.read()).decode()
                 image_src = f"data:image/png;base64,{image_data}"
         else:
             image_src = ""
-        gr.HTML(
-            f"""
-            <div style="display: flex; justify-content: center; align-items: center; gap: 2rem; padding: 1rem; width: 100%">
-                <img src={image_src} style="width:120px;border-radius:50%" alt="Sanath Vijay Haritsa"/>
-                <div>
-                    <h1 style="margin:0;font-size:1.8rem">Sanath’s Portfolio Chatbot</h1>
-                    <h3 style="margin:0;color:#9aa0a6;font-size:0.95rem">
-                        Ask about my work, projects, and research.
-                    </h3>
-                </div>
-            </div>
-            """
-        )
+        template = Template(self.config.header_html_path.read_text())
+        html = template.safe_substitute(image_src=image_src)
+        gr.HTML(html)
 
-    @staticmethod
-    def _create_chatbot() -> gr.Chatbot:
+    def _create_chatbot(self) -> gr.Chatbot:
         """Create the chatbot display component.
 
         Returns:
@@ -140,7 +129,7 @@ class ChatbotUI:
                 {"role": "assistant", "content": "I am happy to provide you that report and plot."}
             ],
             label="Sanath’s Portfolio Chatbot",
-            avatar_images=(None, "assets/sanath_vijay_haritsa.png")
+            avatar_images=(None, self.config.image_path)
         )
 
     @staticmethod
@@ -175,31 +164,14 @@ class ChatbotUI:
             inputs=input_textbox,
         )
         
-    @staticmethod
-    def _add_footer() -> None:
+    def _add_footer(self) -> None:
         """Render the footer section of the UI.
 
         The footer contains metadata about the chatbot as well as
         external links (GitHub and LinkedIn).
         """
-        gr.HTML(
-            """
-            <div style="text-align:center;color:#777;font-size:0.8rem;margin-top:1rem">
-                <div>
-                    Multi-agent chatbot · Factually grounded responses · Built with Gradio · Traced on Langfuse
-                </div>
-                <div style="margin-top:0.3rem">
-                    <a href="https://github.com/sanath95" target="_blank" style="color:#8ab4f8;text-decoration:none">
-                        GitHub
-                    </a>
-                    &nbsp;·&nbsp;
-                    <a href="https://www.linkedin.com/in/sanath-haritsa-974686315/" target="_blank" style="color:#8ab4f8;text-decoration:none">
-                        LinkedIn
-                    </a>
-                </div>
-            </div>
-            """
-        )
+        footer_html = self.config.footer_html_path.read_text(encoding="utf-8")
+        gr.HTML(footer_html)
 
 
 if __name__ == "__main__":
