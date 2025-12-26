@@ -4,11 +4,10 @@ from __future__ import annotations
 from typing import AsyncGenerator
 
 from openai import AsyncOpenAI
-from langfuse import observe
+from langfuse import observe, get_client
 
 from src.config import AgentConfig
 from src.models.schemas import EvidenceBundle, OrchestratorRoute
-from src.tools.tracking import get_tracker
 
 
 class FinalPresentationAgent:
@@ -20,7 +19,7 @@ class FinalPresentationAgent:
     Attributes:
         config: Agent configuration.
         client: AsyncOpenAI client for API calls.
-        tracker: Langfuse tracker instance.
+        langfuse_client: Langfuse client.
         instructions: System instructions for the agent.
     """
 
@@ -32,10 +31,10 @@ class FinalPresentationAgent:
         """
         self.config = config
         self.client = AsyncOpenAI()
-        self.tracker = get_tracker()
+        self.langfuse_client = get_client()
         self.instructions = self._load_instructions()
 
-    @observe(name="final_presentation_agent")
+    @observe(name="final_presentation_agent", capture_input=True, capture_output=True)
     async def run(
         self,
         user_query: str,
@@ -56,6 +55,7 @@ class FinalPresentationAgent:
         input_content = self._format_input(
             user_query, evidence_bundle, orchestrator_output
         )
+        self.langfuse_client.update_current_span(metadata={"final_presentation_instructions": self.instructions, "user_prompt": input_content})
         async with self.client.responses.stream(
             model=self.config.final_presentation_model,
             instructions=self.instructions,
@@ -114,8 +114,7 @@ class FinalPresentationAgent:
         Returns:
             System instructions text.
         """
-        if self.tracker and self.tracker.client:
-            return self.tracker.client.get_prompt(self.config.final_presentation_instructions_langfuse_path).compile()
-        return self.config.final_presentation_instructions_path.read_text(
-            encoding="utf-8"
-        )
+        try:
+            return self.langfuse_client.get_prompt(self.config.final_presentation_instructions_langfuse_path).prompt
+        except:
+            return self.config.final_presentation_instructions_path.read_text(encoding="utf-8")

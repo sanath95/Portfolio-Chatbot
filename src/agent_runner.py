@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import AsyncGenerator, List, Dict
-from langfuse import observe
+from langfuse import Langfuse, propagate_attributes
 
 from src.agents.final_presentation import FinalPresentationAgent
 from src.agents.orchestrator import OrchestratorAgent
@@ -64,8 +64,7 @@ class AgentRunner:
         # Create retrieval dependencies
         return create_retrieval_deps(retriever, self.config.retrieval)
 
-    @observe(name="process_query")
-    async def process_query(self, user_query: str, conversation: List[Dict[str, str]]) -> AsyncGenerator[str, None]:
+    async def process_query(self, user_query: str, conversation: List[Dict[str, str]], session_id: str) -> AsyncGenerator[str, None]:
         """Process a user query through the agent pipeline.
         
         Args:
@@ -75,27 +74,32 @@ class AgentRunner:
         Returns:
             Final response text.
         """
-            
-        # Step 1: Route the query
-        orchestrator_output = await self.orchestrator.run(conversation)
+        langfuse = Langfuse()
+        with langfuse.start_as_current_span(name="process_query", input={"user_query": user_query}, end_on_exit=True) as root_span:
+            with propagate_attributes(session_id=session_id):
+                # Step 1: Route the query
+                orchestrator_output = await self.orchestrator.run(conversation)
 
-        # Step 2: Gather evidence if needed
-        evidence_bundle = None
-        for request in orchestrator_output.downstream_requests:
-            if request.agent == DownstreamAgent.PROFESSIONAL_INFO:
-                user_prompt = self._format_professional_info_prompt(
-                    user_query, request
-                )
-                evidence_bundle = await self.professional_info.run(
-                    user_prompt, self.retrieval_deps
-                )
-            elif request.agent == DownstreamAgent.PUBLIC_PERSONA:
-                # TODO: Implement public persona agent
-                print("Public persona agent not yet implemented")
+                # Step 2: Gather evidence if needed
+                evidence_bundle = None
+                for request in orchestrator_output.downstream_requests:
+                    if request.agent == DownstreamAgent.PROFESSIONAL_INFO:
+                        user_prompt_for_professional_info = self._format_professional_info_prompt(
+                            user_query, request
+                        )
+                        evidence_bundle = await self.professional_info.run(
+                            user_prompt_for_professional_info, self.retrieval_deps
+                        )
+                    elif request.agent == DownstreamAgent.PUBLIC_PERSONA:
+                        # TODO: Implement public persona agent
+                        print("Public persona agent not yet implemented")
 
-        # Step 3: Stream final response
-        async for partial_response in self.final_presentation.run(user_query, evidence_bundle, orchestrator_output):
-            yield partial_response
+                # Step 3: Stream final response
+                final_response = ""
+                async for partial_response in self.final_presentation.run(user_query, evidence_bundle, orchestrator_output):
+                    final_response += partial_response
+                    yield partial_response
+            root_span.update(output=final_response)
 
     @staticmethod
     def _format_professional_info_prompt(

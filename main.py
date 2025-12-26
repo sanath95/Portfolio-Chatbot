@@ -7,6 +7,7 @@ from random import choice
 import base64
 import gradio as gr
 from string import Template
+from uuid import uuid4
 
 from src.agent_runner import AgentRunner
 from src.config import GradioConfig
@@ -33,6 +34,7 @@ class ChatbotUI:
         prompt: str,
         chatbot: ChatHistory,
         conversation: ChatHistory,
+        session_id: str,
     ) -> AsyncGenerator[GradioOutputs, None]:
         """Stream chatbot responses to the UI.
 
@@ -66,7 +68,7 @@ class ChatbotUI:
         # Stream response chunks
         chatbot[-1]["content"] = ""
         conversation.append({"role": "user", "content": prompt})
-        async for chunk in self.agent.process_query(prompt, conversation):
+        async for chunk in self.agent.process_query(prompt, conversation, str(session_id)):
             chatbot[-1]["content"] += chunk
             yield gr.skip(), chatbot, gr.skip()
 
@@ -84,6 +86,7 @@ class ChatbotUI:
         with gr.Blocks(title="Sanath's Portfolio") as demo:
             self._add_header()
             
+            session_id = gr.State(uuid4())
             conversation = gr.State([])
             chatbot = self._create_chatbot()
             prompt = self._create_input()
@@ -93,7 +96,7 @@ class ChatbotUI:
             # Connect event handlers
             prompt.submit(
                 self.stream_response,
-                inputs=[prompt, chatbot, conversation],
+                inputs=[prompt, chatbot, conversation, session_id],
                 outputs=[prompt, chatbot, conversation],
                 show_progress="full"
             )

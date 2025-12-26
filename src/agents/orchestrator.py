@@ -5,11 +5,10 @@ from __future__ import annotations
 from typing import List, Dict, cast
 from openai import AsyncOpenAI
 from openai.types.responses import ResponseInputParam
-from langfuse import observe
+from langfuse import observe, get_client
 
 from src.config import AgentConfig
 from src.models.schemas import OrchestratorRoute
-from src.tools.tracking import get_tracker
 
 
 class OrchestratorAgent:
@@ -21,7 +20,7 @@ class OrchestratorAgent:
     Attributes:
         config: Agent configuration.
         client: AsyncOpenAI client for API calls.
-        tracker: Langfuse tracker instance.
+        langfuse_client: Langfuse client.
         instructions: System instructions for the agent.
     """
 
@@ -33,10 +32,10 @@ class OrchestratorAgent:
         """
         self.config = config
         self.client = AsyncOpenAI()
-        self.tracker = get_tracker()
+        self.langfuse_client = get_client()
         self.instructions = self._load_instructions()
 
-    @observe(name="orchestrator_agent")
+    @observe(name="orchestrator_agent", capture_input=True, capture_output=True)
     async def run(self, conversation: List[Dict[str, str]]) -> OrchestratorRoute:
         """Process a user message and determine routing.
         
@@ -49,6 +48,7 @@ class OrchestratorAgent:
         Raises:
             Exception: If the agent fails to parse the response.
         """
+        self.langfuse_client.update_current_span(metadata={"orchestrator_instructions": self.instructions})
         response = await self.client.responses.parse(
             model=self.config.orchestrator_model,
             instructions=self.instructions,
@@ -67,6 +67,7 @@ class OrchestratorAgent:
         Returns:
             System instructions text.
         """
-        if self.tracker and self.tracker.client:
-            return self.tracker.client.get_prompt(self.config.orchestrator_instructions_langfuse_path).compile()
-        return self.config.orchestrator_instructions_path.read_text(encoding="utf-8")
+        try:
+            return self.langfuse_client.get_prompt(self.config.orchestrator_instructions_langfuse_path).prompt
+        except:
+            return self.config.orchestrator_instructions_path.read_text(encoding="utf-8")

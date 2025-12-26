@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from pydantic_ai import Agent, RunContext
-from langfuse import observe
+from langfuse import observe, get_client
 
 from src.config import AgentConfig
 from src.models.schemas import EvidenceBundle
 from src.tools.retrieval import RetrievalDeps, retrieve_and_rerank
-from src.tools.tracking import get_tracker
 
 
 class ProfessionalInfoAgent:
@@ -19,6 +18,8 @@ class ProfessionalInfoAgent:
     
     Attributes:
         config: Agent configuration.
+        langfuse_client: Langfuse client.
+        instructions: System instructions for the agent.
         agent: PydanticAI agent instance.
     """
 
@@ -29,12 +30,12 @@ class ProfessionalInfoAgent:
             config: Agent configuration.
         """
         self.config = config
-        self.tracker = get_tracker()
+        self.langfuse_client = get_client()
         self.instructions = self._load_instructions()
         self.agent: Agent[RetrievalDeps, EvidenceBundle] = self._create_agent()
         self._register_tools()
 
-    @observe(name="professional_info_agent")
+    @observe(name="professional_info_agent", capture_input=True, capture_output=True)
     async def run(
         self, user_prompt: str, deps: RetrievalDeps
     ) -> EvidenceBundle:
@@ -47,7 +48,9 @@ class ProfessionalInfoAgent:
         Returns:
             Evidence bundle with claims and coverage assessment.
         """
+        self.langfuse_client.update_current_span(metadata={"professional_info_instructions": self.instructions, "user_prompt": user_prompt})
         result = await self.agent.run(
+            instructions=self.instructions,
             user_prompt=user_prompt,
             deps=deps,
         )
@@ -61,7 +64,6 @@ class ProfessionalInfoAgent:
         """
         return Agent(
             self.config.professional_info_model,
-            instructions=self.instructions,
             deps_type=RetrievalDeps,
             output_type=EvidenceBundle
         )
@@ -70,7 +72,7 @@ class ProfessionalInfoAgent:
         """Register tools with the agent."""
 
         @self.agent.tool_plain
-        @observe(name="resume")
+        @observe(name="resume", capture_input=True, capture_output=True)
         def read_resume() -> str:
             """Return the full text of Sanath’s resume.
 
@@ -89,7 +91,7 @@ class ProfessionalInfoAgent:
             return self.config.resume_path.read_text(encoding="utf-8")
 
         @self.agent.tool_plain
-        @observe(name="about_sanath")
+        @observe(name="about_sanath", capture_input=True, capture_output=True)
         def read_about_sanath() -> str:
             """Return the narrative 'About Sanath' profile text.
 
@@ -109,7 +111,7 @@ class ProfessionalInfoAgent:
             return self.config.about_me_path.read_text(encoding="utf-8")
 
         @self.agent.tool
-        @observe(name="retrieve")
+        @observe(name="retrieve", capture_input=True, capture_output=True)
         async def retrieve(
             context: RunContext[RetrievalDeps], search_query: str
         ) -> list[str]:
@@ -157,8 +159,7 @@ class ProfessionalInfoAgent:
         Returns:
             System instructions text.
         """
-        if self.tracker and self.tracker.client:
-            return self.tracker.client.get_prompt(self.config.professional_info_instructions_langfuse_path).compile()
-        return self.config.professional_info_instructions_path.read_text(
-            encoding="utf-8"
-        )
+        try:
+            return self.langfuse_client.get_prompt(self.config.professional_info_instructions_langfuse_path).prompt
+        except:
+            return self.config.professional_info_instructions_path.read_text(encoding="utf-8")
