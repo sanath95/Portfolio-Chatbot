@@ -124,9 +124,23 @@ class ChatbotUI:
         Returns:
             Configured Gradio Chatbot component.
         """
+        intro = \
+            """
+            Welcome 👋
+
+            I’m an AI-powered portfolio assistant built to present Sanath professionally and accurately.
+            Every response is grounded in verified source documents, enhanced through an agentic retrieval pipeline, and transparently traced.
+
+            You can ask about:
+            - Technical skills and domains
+            - Project details and design decisions
+            - Research, reports, and hands-on implementations
+            - Career background and professional focus
+            - Hobbies and interests.
+            """
         return gr.Chatbot(
             [
-                {"role": "assistant", "content": "I am happy to provide you that report and plot."}
+                {"role": "assistant", "content": intro}
             ],
             label="Sanath’s Portfolio Chatbot",
             avatar_images=(None, self.config.image_path)
