@@ -5,6 +5,7 @@ from __future__ import annotations
 from langchain_openai import OpenAIEmbeddings
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
+from qdrant_client.http.exceptions import ResponseHandlingException
 
 from src.config import ProcessorConfig, VectorStoreConfig
 from src.vector_store.processor import FileProcessor
@@ -40,11 +41,13 @@ class ProjectsVectorStore:
             Initialized QdrantVectorStore instance.
         """
         client = QdrantClient(url=self.config.url, port=self.config.port)
-
-        if client.collection_exists(self.config.collection_name):
-            return self._load()
-        else:
-            return self._create()
+        try:
+            if client.collection_exists(self.config.collection_name):
+                return self._load()
+            else:
+                return self._create()
+        except ResponseHandlingException:
+            raise Exception("Qdrant DB not running!")
 
     def _create(self) -> QdrantVectorStore:
         """Create a new Qdrant collection from processed documents.
