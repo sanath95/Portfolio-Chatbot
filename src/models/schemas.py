@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional
+from typing import Optional, Literal, Union
 
 from pydantic import BaseModel, Field
 
@@ -123,3 +123,26 @@ class EvidenceBundle(BaseModel):
         None,
         description="One sentence the Final Presentation agent can use if evidence is missing",
     )
+    
+class AgentSource(str, Enum):
+    ORCHESTRATOR = "orchestrator"
+    PROFESSIONAL_INFO = "professional_info"
+    FINAL_PRESENTATION = "final_presentation"
+    
+class OrchestratorEvent(BaseModel):
+    from_: Literal[AgentSource.ORCHESTRATOR]
+    output: str
+
+class ProfessionalInfoEvent(BaseModel):
+    from_: Literal[AgentSource.PROFESSIONAL_INFO]
+    output: str
+
+class FinalPresentationEvent(BaseModel):
+    from_: Literal[AgentSource.FINAL_PRESENTATION]
+    output: str
+
+AgentEventUnion = Union[
+    OrchestratorEvent,
+    ProfessionalInfoEvent,
+    FinalPresentationEvent,
+]
