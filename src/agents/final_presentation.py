@@ -98,15 +98,20 @@ class FinalPresentationAgent:
             claims = "none"
             projects = "none"
             redirect = "none"
-
-        return (
+            
+        user_input = (
             f"Original user query: {user_query}\n"
             f"Coverage assessment: {coverage}\n"
             f"Claims: {claims}\n"
             f"Relevant projects: {projects}\n"
             f"Safe redirect: {redirect}\n"
-            f"Refusal directive: {orchestrator_output.refusal_directive.model_dump_json()}"
+            f"Refusal directive: {orchestrator_output.refusal_directive.model_dump_json()}\n"
         )
+        
+        if orchestrator_output.downstream_requests:
+            user_input += f"Task directive: {orchestrator_output.downstream_requests[-1].task}"
+            
+        return user_input
 
     def _load_instructions(self) -> str:
         """Load system instructions from file.
