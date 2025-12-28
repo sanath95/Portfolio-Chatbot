@@ -10,6 +10,7 @@ from string import Template
 
 from src.agent_runner import AgentRunner
 from src.config import GradioConfig
+from src.models.schemas import AgentSource
 
 ChatHistory = list[dict[str, str]]
 GradioOutputs = tuple[gr.Textbox | dict[Any, Any], ChatHistory | dict[Any, Any], ChatHistory | dict[Any, Any]]
@@ -68,9 +69,15 @@ class ChatbotUI:
         # Stream response chunks
         chatbot[-1]["content"] = ""
         conversation.append({"role": "user", "content": prompt})
-        async for chunk in self.agent.process_query(prompt, conversation, str(session_id)):
-            chatbot[-1]["content"] += chunk
-            yield gr.skip(), chatbot, gr.skip()
+        async for event in self.agent.process_query(prompt, conversation, str(session_id)):
+            match event.from_:
+                case AgentSource.ORCHESTRATOR:
+                    conversation.append({"role": "assistant", "content": event.output})
+                case AgentSource.PROFESSIONAL_INFO:
+                    conversation.append({"role": "assistant", "content": event.output})
+                case AgentSource.FINAL_PRESENTATION:
+                    chatbot[-1]["content"] += event.output
+                    yield gr.skip(), chatbot, gr.skip()
 
         conversation.append({"role": "assistant", "content": chatbot[-1]["content"]})
         
