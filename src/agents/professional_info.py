@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from pydantic_ai import Agent, RunContext
 from langfuse import observe, get_client
+from pymupdf import open as pdfopen
 
 from src.config import AgentConfig
 from src.models.schemas import EvidenceBundle
 from src.tools.retrieval import RetrievalDeps, retrieve_and_rerank
+from src.tools.github_repos import fetch_project_repos
 
 
 class ProfessionalInfoAgent:
@@ -89,6 +91,36 @@ class ProfessionalInfoAgent:
                 resume: Full text of Sanath’s resume.
             """
             return self.config.resume_path.read_text(encoding="utf-8")
+        
+        @self.agent.tool_plain
+        @observe(name="resume_old", capture_input=True, capture_output=True)
+        def read_old_resume() -> str:
+            """Return the full text of Sanath's old resume.
+
+            Use this tool when you need:
+            - More details about Sanath's work experience in Nichesolv Private Limited, Bangalore, India.
+            
+            Returns:
+                old_resume: Full text of Sanath's old resume.
+            """
+            with pdfopen(self.config.old_resume_path) as doc:
+                old_resume = "\n".join(str(page.get_text("text")) for page in doc)
+            return old_resume
+        
+        @self.agent.tool_plain
+        @observe(name="transcript_of_records", capture_input=True, capture_output=True)
+        def read_transcript_of_records() -> str:
+            """Return the full text of Sanath's master's degree transcript of records.
+
+            Use this tool when you need:
+            - Information about Sanath's master's degree curriculum and his grades.
+            
+            Returns:
+                transcript_of_records: Full text of Sanath's transcript of records.
+            """
+            with pdfopen(self.config.transcript_of_records_path) as doc:
+                transcript_of_records = "\n".join(str(page.get_text("text")) for page in doc)
+            return transcript_of_records
 
         @self.agent.tool_plain
         @observe(name="about_sanath", capture_input=True, capture_output=True)
@@ -109,6 +141,16 @@ class ProfessionalInfoAgent:
                 about_me: Narrative profile text about Sanath.
             """
             return self.config.about_me_path.read_text(encoding="utf-8")
+
+        
+        @self.agent.tool_plain
+        @observe(name="github_repos", capture_input=True, capture_output=True)
+        async def fetch_github_repos() -> str:
+            """Fetch Sanath's GitHub repositories for project linking.
+    
+            This tool returns a JSON list of repository metadata including name, description, and GitHub URL.
+            """
+            return await fetch_project_repos(self.config.github_repos_endpoint)
 
         @self.agent.tool
         @observe(name="retrieve", capture_input=True, capture_output=True)
