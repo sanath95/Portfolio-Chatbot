@@ -29,7 +29,7 @@ class FinalPresentationAgent:
         Args:
             config: Agent configuration.
         """
-        self.config = config
+        self.config = config.final_presentation
         self.client = AsyncOpenAI()
         self.langfuse_client = get_client()
         self.instructions = self._load_instructions()
@@ -57,7 +57,7 @@ class FinalPresentationAgent:
         )
         self.langfuse_client.update_current_span(metadata={"final_presentation_instructions": self.instructions, "user_prompt": input_content})
         async with self.client.responses.stream(
-            model=self.config.final_presentation_model,
+            model=self.config.model,
             instructions=self.instructions,
             input=[
                 {
@@ -115,6 +115,6 @@ class FinalPresentationAgent:
             System instructions text.
         """
         try:
-            return self.langfuse_client.get_prompt(self.config.final_presentation_instructions_langfuse_path).prompt
+            return self.langfuse_client.get_prompt(self.config.langfuse_key).prompt
         except:
-            return self.config.final_presentation_instructions_path.read_text(encoding="utf-8")
+            return self.config.instructions_path.read_text(encoding="utf-8")

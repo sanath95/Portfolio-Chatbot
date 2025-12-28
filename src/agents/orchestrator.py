@@ -30,7 +30,7 @@ class OrchestratorAgent:
         Args:
             config: Agent configuration.
         """
-        self.config = config
+        self.config = config.orchestrator
         self.client = AsyncOpenAI()
         self.langfuse_client = get_client()
         self.instructions = self._load_instructions()
@@ -50,7 +50,7 @@ class OrchestratorAgent:
         """
         self.langfuse_client.update_current_span(metadata={"orchestrator_instructions": self.instructions})
         response = await self.client.responses.parse(
-            model=self.config.orchestrator_model,
+            model=self.config.model,
             instructions=self.instructions,
             input=cast(ResponseInputParam, conversation),
             text_format=OrchestratorRoute,
@@ -68,6 +68,6 @@ class OrchestratorAgent:
             System instructions text.
         """
         try:
-            return self.langfuse_client.get_prompt(self.config.orchestrator_instructions_langfuse_path).prompt
+            return self.langfuse_client.get_prompt(self.config.langfuse_key).prompt
         except:
-            return self.config.orchestrator_instructions_path.read_text(encoding="utf-8")
+            return self.config.instructions_path.read_text(encoding="utf-8")

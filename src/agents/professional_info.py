@@ -31,7 +31,7 @@ class ProfessionalInfoAgent:
         Args:
             config: Agent configuration.
         """
-        self.config = config
+        self.config = config.professional_info
         self.langfuse_client = get_client()
         self.instructions = self._load_instructions()
         self.agent: Agent[RetrievalDeps, EvidenceBundle] = self._create_agent()
@@ -65,7 +65,7 @@ class ProfessionalInfoAgent:
             Configured Agent instance.
         """
         return Agent(
-            self.config.professional_info_model,
+            self.config.model,
             deps_type=RetrievalDeps,
             output_type=EvidenceBundle
         )
@@ -90,7 +90,7 @@ class ProfessionalInfoAgent:
             Returns:
                 resume: Full text of Sanath’s resume.
             """
-            return self.config.resume_path.read_text(encoding="utf-8")
+            return self.config.tool_config.resume_path.read_text(encoding="utf-8")
         
         @self.agent.tool_plain
         @observe(name="resume_old", capture_input=True, capture_output=True)
@@ -103,7 +103,7 @@ class ProfessionalInfoAgent:
             Returns:
                 old_resume: Full text of Sanath's old resume.
             """
-            with pdfopen(self.config.old_resume_path) as doc:
+            with pdfopen(self.config.tool_config.old_resume_path) as doc:
                 old_resume = "\n".join(str(page.get_text("text")) for page in doc)
             return old_resume
         
@@ -118,7 +118,7 @@ class ProfessionalInfoAgent:
             Returns:
                 transcript_of_records: Full text of Sanath's transcript of records.
             """
-            with pdfopen(self.config.transcript_of_records_path) as doc:
+            with pdfopen(self.config.tool_config.transcript_of_records_path) as doc:
                 transcript_of_records = "\n".join(str(page.get_text("text")) for page in doc)
             return transcript_of_records
 
@@ -140,7 +140,7 @@ class ProfessionalInfoAgent:
             Returns:
                 about_me: Narrative profile text about Sanath.
             """
-            return self.config.about_me_path.read_text(encoding="utf-8")
+            return self.config.tool_config.about_me_path.read_text(encoding="utf-8")
 
         
         @self.agent.tool_plain
@@ -150,7 +150,7 @@ class ProfessionalInfoAgent:
     
             This tool returns a JSON list of repository metadata including name, description, and GitHub URL.
             """
-            return await fetch_project_repos(self.config.github_repos_endpoint)
+            return await fetch_project_repos(self.config.tool_config.github_repos_endpoint)
 
         @self.agent.tool
         @observe(name="retrieve", capture_input=True, capture_output=True)
@@ -202,6 +202,6 @@ class ProfessionalInfoAgent:
             System instructions text.
         """
         try:
-            return self.langfuse_client.get_prompt(self.config.professional_info_instructions_langfuse_path).prompt
+            return self.langfuse_client.get_prompt(self.config.langfuse_key).prompt
         except:
-            return self.config.professional_info_instructions_path.read_text(encoding="utf-8")
+            return self.config.instructions_path.read_text(encoding="utf-8")
