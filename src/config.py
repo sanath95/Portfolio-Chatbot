@@ -1,0 +1,125 @@
+"""Configuration management for the portfolio chatbot system."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+@dataclass(frozen=True)
+class VectorStoreConfig:
+    """Configuration for Qdrant vector store.
+    
+    Attributes:
+        url: Qdrant service URL.
+        port: Qdrant service port.
+        collection_name: Name of the collection to use.
+        embedding_model: OpenAI embedding model identifier.
+    """
+    url: str = "http://localhost:6333"
+    port: int = 6333
+    collection_name: str = "sanath_projects"
+    embedding_model: str = "text-embedding-3-small"
+
+
+@dataclass(frozen=True)
+class ProcessorConfig:
+    """Configuration for document processing.
+    
+    Attributes:
+        input_glob: Glob pattern for input files.
+        config_path: Path to JSON metadata configuration.
+        num_threads: Number of threads for PDF processing.
+    """
+    input_glob: str = "./data/*"
+    config_path: Path = Path("./configs/data_config.json")
+    num_threads: int = 4
+
+@dataclass(frozen=True)
+class AgentProfile:
+    model: str
+    instructions_path: Path
+    langfuse_key: str
+    
+@dataclass(frozen=True)
+class ProfessionalInfoProfile(AgentProfile):
+    tool_config: ToolConfig
+
+@dataclass(frozen=True)
+class ToolConfig:
+    resume_path: Path = Path("./prompts/Sanath Vijay Haritsa - CV.tex")
+    about_me_path: Path = Path("./prompts/Sanath Vijay Haritsa - About Me.md")
+    old_resume_path: Path = Path("./prompts/Sanath Vijay Haritsa - Old CV.pdf")
+    transcript_of_records_path: Path = Path("./prompts/Sanath Vijay Haritsa - Transcript of Records.pdf")
+    github_repos_endpoint: str = "https://api.github.com/users/sanath95/repos"
+
+@dataclass(frozen=True)
+class AgentConfig:
+    """Configuration for AI agents."""
+
+    orchestrator: AgentProfile = AgentProfile(
+        model="o3-mini",
+        instructions_path=Path("./prompts/orchestrator.txt"),
+        langfuse_key="instructions/orchestrator"
+    )
+
+    professional_info: ProfessionalInfoProfile = ProfessionalInfoProfile(
+        model="gpt-5.2",
+        instructions_path=Path("./prompts/professional_info.txt"),
+        langfuse_key="instructions/professional_info",
+        tool_config=ToolConfig()
+    )
+
+    final_presentation: AgentProfile = AgentProfile(
+        model="gpt-5-mini",
+        instructions_path=Path("./prompts/final_presentation.txt"),
+        langfuse_key="instructions/final_presentation",
+    )
+
+@dataclass(frozen=True)
+class RetrievalConfig:
+    """Configuration for retrieval and reranking.
+    
+    Attributes:
+        search_type: Type of search to perform.
+        retrieval_k: Number of documents to retrieve.
+        reranker_model: Model for reranking.
+        reranker_threshold: Minimum score threshold for reranked documents.
+    """
+    search_type = "similarity"
+    retrieval_k: int = 10
+    reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    reranker_threshold: float = 0.0
+
+@dataclass(frozen=True)
+class AppConfig:
+    """Main application configuration.
+    
+    Attributes:
+        vector_store: Vector store configuration.
+        processor: Document processor configuration.
+        agent: Agent configuration.
+        retrieval: Retrieval configuration.
+        langfuse: Langfuse tracking configuration.
+    """
+    vector_store: VectorStoreConfig = VectorStoreConfig()
+    processor: ProcessorConfig = ProcessorConfig()
+    agent: AgentConfig = AgentConfig()
+    retrieval: RetrievalConfig = RetrievalConfig()
+    
+@dataclass(frozen=True)
+class GradioConfig:
+    """Gradio UI configuration
+    
+    Attributes:
+        header_html_path: Path for the chatbot header html.
+        footer_html_path: Path for the chatbot footer html.
+        image_path: Path for Sanath's photo.
+    """
+    header_html_path: Path = Path("./static/header.html")
+    footer_html_path: Path = Path("./static/footer.html")
+    image_path: Path = Path("./static/sanath_vijay_haritsa.png")
