@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from os import getenv
 
 from dotenv import load_dotenv
 
@@ -40,33 +39,46 @@ class ProcessorConfig:
     config_path: Path = Path("./configs/data_config.json")
     num_threads: int = 4
 
+@dataclass(frozen=True)
+class AgentProfile:
+    model: str
+    instructions_path: Path
+    langfuse_key: str
+    
+@dataclass(frozen=True)
+class ProfessionalInfoProfile(AgentProfile):
+    tool_config: ToolConfig
+
+@dataclass(frozen=True)
+class ToolConfig:
+    resume_path: Path = Path("./prompts/Sanath Vijay Haritsa - CV.tex")
+    about_me_path: Path = Path("./prompts/Sanath Vijay Haritsa - About Me.md")
+    old_resume_path: Path = Path("./prompts/Sanath Vijay Haritsa - Old CV.pdf")
+    transcript_of_records_path: Path = Path("./prompts/Sanath Vijay Haritsa - Transcript of Records.pdf")
+    github_repos_endpoint: str = "https://api.github.com/users/sanath95/repos"
 
 @dataclass(frozen=True)
 class AgentConfig:
-    """Configuration for AI agents.
-    
-    Attributes:
-        orchestrator_model: Model for orchestrator agent.
-        professional_info_model: Model for professional info agent.
-        final_presentation_model: Model for final presentation agent.
-        orchestrator_instructions_path: Path to orchestrator instructions.
-        professional_info_instructions_path: Path to professional info instructions.
-        final_presentation_instructions_path: Path to final presentation instructions.
-        resume_path: Path to resume file.
-        about_me_path: Path to about me file.
-    """
-    orchestrator_model: str = "o3-mini"
-    professional_info_model: str = "gpt-5.2"
-    final_presentation_model: str = "gpt-5-mini"
-    orchestrator_instructions_path: Path = Path("./prompts/orchestrator.txt")
-    professional_info_instructions_path: Path = Path("./prompts/professional_info.txt")
-    final_presentation_instructions_path: Path = Path("./prompts/final_presentation.txt")
-    orchestrator_instructions_langfuse_path: str = "instructions/orchestrator"
-    professional_info_instructions_langfuse_path: str = "instructions/professional_info"
-    final_presentation_instructions_langfuse_path: str = "instructions/final_presentation"
-    resume_path: Path = Path("./prompts/Sanath Vijay Haritsa - CV.tex")
-    about_me_path: Path = Path("./prompts/Sanath Vijay Haritsa - About Me.md")
+    """Configuration for AI agents."""
 
+    orchestrator: AgentProfile = AgentProfile(
+        model="o3-mini",
+        instructions_path=Path("./prompts/orchestrator.txt"),
+        langfuse_key="instructions/orchestrator"
+    )
+
+    professional_info: ProfessionalInfoProfile = ProfessionalInfoProfile(
+        model="gpt-5.2",
+        instructions_path=Path("./prompts/professional_info.txt"),
+        langfuse_key="instructions/professional_info",
+        tool_config=ToolConfig()
+    )
+
+    final_presentation: AgentProfile = AgentProfile(
+        model="gpt-5-mini",
+        instructions_path=Path("./prompts/final_presentation.txt"),
+        langfuse_key="instructions/final_presentation",
+    )
 
 @dataclass(frozen=True)
 class RetrievalConfig:
