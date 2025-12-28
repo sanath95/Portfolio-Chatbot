@@ -7,7 +7,7 @@ from src.agents.final_presentation import FinalPresentationAgent
 from src.agents.orchestrator import OrchestratorAgent
 from src.agents.professional_info import ProfessionalInfoAgent
 from src.config import AppConfig
-from src.models.schemas import DownstreamAgent
+from src.models.schemas import DownstreamAgent, AgentEventUnion, OrchestratorEvent, ProfessionalInfoEvent, FinalPresentationEvent, AgentSource
 from src.tools.retrieval import create_retrieval_deps
 from src.vector_store.store import ProjectsVectorStore
 
@@ -64,7 +64,7 @@ class AgentRunner:
         # Create retrieval dependencies
         return create_retrieval_deps(retriever, self.config.retrieval)
 
-    async def process_query(self, user_query: str, conversation: List[Dict[str, str]], session_id: str) -> AsyncGenerator[str, None]:
+    async def process_query(self, user_query: str, conversation: List[Dict[str, str]], session_id: str) -> AsyncGenerator[AgentEventUnion, None]:
         """Process a user query through the agent pipeline.
         
         Args:
@@ -79,6 +79,7 @@ class AgentRunner:
             with propagate_attributes(session_id=session_id):
                 # Step 1: Route the query
                 orchestrator_output = await self.orchestrator.run(conversation)
+                yield OrchestratorEvent(from_=AgentSource.ORCHESTRATOR, output=orchestrator_output.model_dump_json(),)
 
                 # Step 2: Gather evidence if needed
                 evidence_bundle = None
@@ -90,6 +91,7 @@ class AgentRunner:
                         evidence_bundle = await self.professional_info.run(
                             user_prompt_for_professional_info, self.retrieval_deps
                         )
+                        yield ProfessionalInfoEvent(from_=AgentSource.PROFESSIONAL_INFO, output=evidence_bundle.model_dump_json(),)
                     elif request.agent == DownstreamAgent.PUBLIC_PERSONA:
                         # TODO: Implement public persona agent
                         print("Public persona agent not yet implemented")
@@ -98,7 +100,7 @@ class AgentRunner:
                 final_response = ""
                 async for partial_response in self.final_presentation.run(user_query, evidence_bundle, orchestrator_output):
                     final_response += partial_response
-                    yield partial_response
+                    yield FinalPresentationEvent(from_=AgentSource.FINAL_PRESENTATION, output=partial_response,)
             root_span.update(output=final_response)
 
     @staticmethod
