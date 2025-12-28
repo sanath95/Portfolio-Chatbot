@@ -64,7 +64,8 @@ class FinalPresentationAgent:
                     "role": "user",
                     "content": input_content
                 }
-            ]
+            ],
+            reasoning={"effort": "medium"}
         ) as stream:
             async for event in stream:
                 if event.type == "response.output_text.delta":

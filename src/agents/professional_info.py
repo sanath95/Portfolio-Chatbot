@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic_ai import Agent, RunContext
+from pydantic_ai import Agent, RunContext, ModelSettings
 from langfuse import observe, get_client
 from pymupdf import open as pdfopen
 
@@ -67,7 +67,8 @@ class ProfessionalInfoAgent:
         return Agent(
             self.config.model,
             deps_type=RetrievalDeps,
-            output_type=EvidenceBundle
+            output_type=EvidenceBundle,
+            model_settings=ModelSettings(temperature=0, parallel_tool_calls=True)
         )
 
     def _register_tools(self) -> None:

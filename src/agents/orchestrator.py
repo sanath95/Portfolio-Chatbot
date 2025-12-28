@@ -54,6 +54,7 @@ class OrchestratorAgent:
             instructions=self.instructions,
             input=cast(ResponseInputParam, conversation),
             text_format=OrchestratorRoute,
+            reasoning={"effort": "high"}
         )
 
         if response.output_parsed:
