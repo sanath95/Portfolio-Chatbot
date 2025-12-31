@@ -135,8 +135,7 @@ class ChatbotUI:
             """
             Welcome 👋
 
-            I’m an AI-powered portfolio assistant built to present Sanath professionally and accurately.
-            Every response is grounded in verified source documents, enhanced through an agentic retrieval pipeline, and transparently traced.
+            Responses are grounded in verified sources, delivered through a multi-agent interactive chatbot, and transparently traced.
 
             You can ask about:
             - Technical skills
