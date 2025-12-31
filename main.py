@@ -180,8 +180,8 @@ class ChatbotUI:
             examples=[
                 "Introduce Sanath in a few short sentences.",
                 "What was his final grade in his master's program?",
-                "What are his hobbies and interests?",
-                "Tell me the contributions of the master's thesis",
+                "Summarize his generative AI work and list the tools used.",
+                "Show me a card trick."
             ],
             inputs=input_textbox,
         )
