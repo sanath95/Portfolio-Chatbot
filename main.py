@@ -71,9 +71,7 @@ class ChatbotUI:
         conversation.append({"role": "user", "content": prompt})
         async for event in self.agent.process_query(prompt, conversation, str(session_id)):
             match event.from_:
-                case AgentSource.ORCHESTRATOR:
-                    conversation.append({"role": "assistant", "content": event.output})
-                case AgentSource.PROFESSIONAL_INFO:
+                case AgentSource.ORCHESTRATOR | AgentSource.PROFESSIONAL_INFO | AgentSource.PUBLIC_PERSONA:
                     conversation.append({"role": "assistant", "content": event.output})
                 case AgentSource.FINAL_PRESENTATION:
                     chatbot[-1]["content"] += event.output
@@ -137,15 +135,13 @@ class ChatbotUI:
             """
             Welcome 👋
 
-            I’m an AI-powered portfolio assistant built to present Sanath professionally and accurately.
-            Every response is grounded in verified source documents, enhanced through an agentic retrieval pipeline, and transparently traced.
+            Responses are grounded in verified sources, delivered through a multi-agent interactive chatbot, and transparently traced.
 
             You can ask about:
-            - Technical skills and domains
-            - Project details and design decisions
-            - Research, reports, and hands-on implementations
+            - Technical skills
+            - Project details
             - Career background and professional focus
-            - Hobbies and interests.
+            - Hobbies and interests
             """
         return gr.Chatbot(
             [
@@ -182,8 +178,9 @@ class ChatbotUI:
             examples=[
                 "Introduce Sanath in a few short sentences.",
                 "What was his final grade in his master's program?",
-                "What are his hobbies and interests?",
-                "Tell me the contributions of the master's thesis",
+                "Summarize his generative AI work and list the tools used.",
+                "Show me a card trick.",
+                "How can I contact Sanath?"
             ],
             inputs=input_textbox,
         )

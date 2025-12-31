@@ -18,7 +18,9 @@ class DownstreamAgent(str, Enum):
 class Support(str, Enum):
     """Sources of evidence support."""
     RESUME = "resume"
+    OLD_RESUME = "old_resume"
     ABOUT_SANATH = "about_sanath"
+    GITHUB = "github"
     RETRIEVE = "retrieve"
 
 
@@ -127,6 +129,7 @@ class EvidenceBundle(BaseModel):
 class AgentSource(str, Enum):
     ORCHESTRATOR = "orchestrator"
     PROFESSIONAL_INFO = "professional_info"
+    PUBLIC_PERSONA = "public_persona"
     FINAL_PRESENTATION = "final_presentation"
     
 class OrchestratorEvent(BaseModel):
@@ -136,6 +139,10 @@ class OrchestratorEvent(BaseModel):
 class ProfessionalInfoEvent(BaseModel):
     from_: Literal[AgentSource.PROFESSIONAL_INFO]
     output: str
+    
+class PublicPersonaEvent(BaseModel):
+    from_: Literal[AgentSource.PUBLIC_PERSONA]
+    output: str
 
 class FinalPresentationEvent(BaseModel):
     from_: Literal[AgentSource.FINAL_PRESENTATION]
@@ -144,5 +151,119 @@ class FinalPresentationEvent(BaseModel):
 AgentEventUnion = Union[
     OrchestratorEvent,
     ProfessionalInfoEvent,
+    PublicPersonaEvent,
     FinalPresentationEvent,
 ]
+
+class Platform(str, Enum):
+    """Supported public content platforms."""
+    INSTAGRAM = "instagram"
+    YOUTUBE = "youtube"
+
+class EngagementMetrics(BaseModel):
+    """Platform-agnostic engagement metrics for a public artifact."""
+    view_count: Optional[int] = Field(
+        None,
+        description="Number of views,",
+    )
+    like_count: Optional[int] = Field(
+        None,
+        description="Number of likes or positive reactions.",
+    )
+    comment_count: Optional[int] = Field(
+        None,
+        description="Number of comments or replies.",
+    )
+    
+class Artifact(BaseModel):
+    """A single public artifact created or curated by Sanath."""
+    platform: Platform = Field(
+        ...,
+        description="Platform on which the artifact is published.",
+    )
+    title: str = Field(
+        ...,
+        description="Title or primary label of the artifact.",
+    )
+    description: Optional[str] = Field(
+        None,
+        description="Original platform-provided description (no interpretation).",
+    )
+    url: str = Field(
+        ...,
+        description="Direct public URL to the artifact.",
+    )
+    timestamp: str = Field(
+        ...,
+        description="Normalized publication timestamp (ISO).",
+    )
+    engagement_metrics: EngagementMetrics = Field(
+        ...,
+        description="Observed engagement metrics for the artifact.",
+    )
+    factual_description: Optional[str] = Field(
+        None,
+        description="One-sentence factual description of what the artifact is, without interpretation or inference.",
+    )
+
+class InstagramAccountMetadata(BaseModel):
+    """Public metadata for Sanath's Instagram account."""
+    followers_count: Optional[int] = Field(
+        None,
+        description="Number of followers on the Instagram account.",
+    )
+    profile_description: Optional[str] = Field(
+        None,
+        description="Account bio text as shown on Instagram.",
+    )
+    media_count: Optional[int] = Field(
+        None,
+        description="Total number of media items posted.",
+    )
+    
+class YouTubeChannelMetadata(BaseModel):
+    """Public metadata for Sanath's YouTube channel."""
+    subscribers_count: Optional[int] = Field(
+        None,
+        description="Number of channel subscribers.",
+    )
+    profile_description: Optional[str] = Field(
+        None,
+        description="Channel description as shown on YouTube.",
+    )
+    video_count: Optional[int] = Field(
+        None,
+        description="Total number of uploaded videos.",
+    )
+
+class AccountMetadata(BaseModel):
+    """Platform-level metadata for a public account."""
+    handle: str = Field(
+        ...,
+        description="Platform-specific account identifier (e.g., username or channel ID).",
+    )
+    platform_metadata: Optional[
+        Union[InstagramAccountMetadata, YouTubeChannelMetadata]
+    ] = Field(
+        None,
+        description="Public metadata specific to the referenced platform.",
+    )
+
+class PublicArtifacts(BaseModel):
+    """Complete evidence bundle returned by the Public Persona Evidence Agent."""
+    coverage_assessment: CoverageAssessment = Field(
+        ...,
+        description="Assessment of whether the collected artifacts sufficiently cover the user's query.",
+    )
+    artifacts: list[Artifact] = Field(
+        ...,
+        description="List of verified public artifacts relevant to the query.",
+    )
+    account_metadata: Optional[list[AccountMetadata]] = Field(
+        ...,
+        description="Platform-level metadata associated with the collected artifacts.",
+    )
+    safe_redirect_if_missing: Optional[str] = Field(
+        None,
+        description="Single-sentence fallback response for downstream use when evidence is insufficient.",
+    )
