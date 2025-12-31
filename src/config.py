@@ -47,15 +47,26 @@ class AgentProfile:
     
 @dataclass(frozen=True)
 class ProfessionalInfoProfile(AgentProfile):
-    tool_config: ToolConfig
+    tool_config: ProfessionalInfoToolConfig
+    
+@dataclass(frozen=True)
+class PublicPersonaProfile(AgentProfile):
+    tool_config: PublicPersonaToolConfig
 
 @dataclass(frozen=True)
-class ToolConfig:
+class ProfessionalInfoToolConfig:
     resume_path: Path = Path("./prompts/Sanath Vijay Haritsa - CV.tex")
     about_me_path: Path = Path("./prompts/Sanath Vijay Haritsa - About Me.md")
     old_resume_path: Path = Path("./prompts/Sanath Vijay Haritsa - Old CV.pdf")
     transcript_of_records_path: Path = Path("./prompts/Sanath Vijay Haritsa - Transcript of Records.pdf")
     github_repos_endpoint: str = "https://api.github.com/users/sanath95/repos"
+    
+@dataclass(frozen=True)
+class PublicPersonaToolConfig:
+    instagram_account_info_endpoint = "https://graph.instagram.com/me"
+    instagram_media_endpoint = "https://graph.instagram.com/me/media"
+    instagram_account_info_fields = "username,media_count"
+    instagram_media_fields = "id,caption,like_count,comments_count,media_type,timestamp,permalink"
 
 @dataclass(frozen=True)
 class AgentConfig:
@@ -71,7 +82,14 @@ class AgentConfig:
         model="gpt-5.2",
         instructions_path=Path("./prompts/professional_info.txt"),
         langfuse_key="instructions/professional_info",
-        tool_config=ToolConfig()
+        tool_config=ProfessionalInfoToolConfig()
+    )
+    
+    public_persona: PublicPersonaProfile = PublicPersonaProfile(
+        model="gpt-5.2",
+        instructions_path=Path("./prompts/public_persona.txt"),
+        langfuse_key="instructions/public_persona",
+        tool_config=PublicPersonaToolConfig()
     )
 
     final_presentation: AgentProfile = AgentProfile(
