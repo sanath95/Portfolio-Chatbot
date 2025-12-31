@@ -6,8 +6,9 @@ from langfuse import Langfuse, propagate_attributes
 from src.agents.final_presentation import FinalPresentationAgent
 from src.agents.orchestrator import OrchestratorAgent
 from src.agents.professional_info import ProfessionalInfoAgent
+from src.agents.public_persona import PublicPersonaAgent
 from src.config import AppConfig
-from src.models.schemas import DownstreamAgent, AgentEventUnion, OrchestratorEvent, ProfessionalInfoEvent, FinalPresentationEvent, AgentSource
+from src.models.schemas import DownstreamAgent, AgentEventUnion, OrchestratorEvent, ProfessionalInfoEvent, PublicPersonaEvent, FinalPresentationEvent, AgentSource
 from src.tools.retrieval import create_retrieval_deps
 from src.vector_store.store import ProjectsVectorStore
 
@@ -37,6 +38,7 @@ class AgentRunner:
         # Initialize agents
         self.orchestrator = OrchestratorAgent(self.config.agent)
         self.professional_info = ProfessionalInfoAgent(self.config.agent)
+        self.public_persona = PublicPersonaAgent(self.config.agent)
         self.final_presentation = FinalPresentationAgent(self.config.agent)
 
         # Initialize retrieval system
@@ -83,31 +85,34 @@ class AgentRunner:
 
                 # Step 2: Gather evidence if needed
                 evidence_bundle = None
+                public_artifacts = None
                 for request in orchestrator_output.downstream_requests:
-                    if request.agent == DownstreamAgent.PROFESSIONAL_INFO:
-                        user_prompt_for_professional_info = self._format_professional_info_prompt(
+                    user_prompt = self._format_prompt(
                             user_query, request
                         )
+                    if request.agent == DownstreamAgent.PROFESSIONAL_INFO:
                         evidence_bundle = await self.professional_info.run(
-                            user_prompt_for_professional_info, self.retrieval_deps
+                            user_prompt, self.retrieval_deps
                         )
                         yield ProfessionalInfoEvent(from_=AgentSource.PROFESSIONAL_INFO, output=evidence_bundle.model_dump_json(),)
                     elif request.agent == DownstreamAgent.PUBLIC_PERSONA:
-                        # TODO: Implement public persona agent
-                        print("Public persona agent not yet implemented")
+                        public_artifacts = await self.public_persona.run(
+                            user_prompt
+                        )
+                        yield PublicPersonaEvent(from_=AgentSource.PUBLIC_PERSONA, output=public_artifacts.model_dump_json())
 
                 # Step 3: Stream final response
                 final_response = ""
-                async for partial_response in self.final_presentation.run(user_query, evidence_bundle, orchestrator_output):
+                async for partial_response in self.final_presentation.run(user_query, evidence_bundle, public_artifacts, orchestrator_output):
                     final_response += partial_response
                     yield FinalPresentationEvent(from_=AgentSource.FINAL_PRESENTATION, output=partial_response,)
             root_span.update(output=final_response)
 
     @staticmethod
-    def _format_professional_info_prompt(
+    def _format_prompt(
         user_query: str, request
     ) -> str:
-        """Format the prompt for the professional info agent.
+        """Format the prompt for the downstream agent.
         
         Args:
             user_query: The original user query.
