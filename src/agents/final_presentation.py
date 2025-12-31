@@ -122,7 +122,7 @@ class FinalPresentationAgent:
         
         if orchestrator_output.refusal_directive.needed:
             user_input += f"Refusal directive: {orchestrator_output.refusal_directive.model_dump_json()}\n"
-        if orchestrator_output.downstream_requests[-1].agent == DownstreamAgent.FINAL_PRESENTATION and orchestrator_output.downstream_requests:
+        if orchestrator_output.downstream_requests and orchestrator_output.downstream_requests[-1].agent == DownstreamAgent.FINAL_PRESENTATION:
             user_input += f"Task directive: {orchestrator_output.downstream_requests[-1].task}"
             
         return user_input
