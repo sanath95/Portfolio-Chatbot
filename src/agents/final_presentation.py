@@ -7,7 +7,7 @@ from openai import AsyncOpenAI
 from langfuse import observe, get_client
 
 from src.config import AgentConfig
-from src.models.schemas import EvidenceBundle, OrchestratorRoute
+from src.models.schemas import DownstreamAgent, EvidenceBundle, OrchestratorRoute, PublicArtifacts
 
 
 class FinalPresentationAgent:
@@ -39,6 +39,7 @@ class FinalPresentationAgent:
         self,
         user_query: str,
         evidence_bundle: EvidenceBundle | None,
+        public_artifacts: PublicArtifacts | None,
         orchestrator_output: OrchestratorRoute,
     ) -> AsyncGenerator[str, None]:
         """Stream the final response from evidence and routing decisions.
@@ -46,6 +47,7 @@ class FinalPresentationAgent:
         Args:
             user_query: The original user query.
             evidence_bundle: Evidence gathered by professional info agent.
+            public_artifacts: Public artifacts gathered by public persona agent.
             orchestrator_output: Routing decisions from orchestrator.
             
         Returns:
@@ -53,7 +55,7 @@ class FinalPresentationAgent:
         """
         # Format input for the agent
         input_content = self._format_input(
-            user_query, evidence_bundle, orchestrator_output
+            user_query, evidence_bundle, public_artifacts, orchestrator_output
         )
         self.langfuse_client.update_current_span(metadata={"final_presentation_instructions": self.instructions, "user_prompt": input_content})
         async with self.client.responses.stream(
@@ -77,6 +79,7 @@ class FinalPresentationAgent:
         self,
         user_query: str,
         evidence_bundle: EvidenceBundle | None,
+        public_artifacts: PublicArtifacts | None,
         orchestrator_output: OrchestratorRoute,
     ) -> str:
         """Format input for the final presentation agent.
@@ -84,32 +87,42 @@ class FinalPresentationAgent:
         Args:
             user_query: The original user query.
             evidence_bundle: Evidence gathered by professional info agent.
+            public_artifacts: Public artifacts gathered by public persona agent.
             orchestrator_output: Routing decisions from orchestrator.
             
         Returns:
             Formatted input string.
         """
+        user_input = f"Original user query: {user_query}\n"
         if evidence_bundle:
             coverage = evidence_bundle.coverage_assessment.model_dump_json()
             claims = [claim.model_dump_json() for claim in evidence_bundle.claims]
             projects = ", ".join(evidence_bundle.project_leads or [])
             redirect = evidence_bundle.safe_redirect_if_missing or "none"
-        else:
-            coverage = "none"
-            claims = "none"
-            projects = "none"
-            redirect = "none"
+            user_input += (
+                "Evidence Mode A:\n"
+                f"Coverage assessment: {coverage}\n"
+                f"Claims: {claims}\n"
+                f"Relevant projects: {projects}\n"
+                f"Safe redirect: {redirect}\n"
+            )
+        if public_artifacts:
+            coverage = public_artifacts.coverage_assessment.model_dump_json()
+            artifacts = [artifact.model_dump_json() for artifact in public_artifacts.artifacts]
+            account_metadata = [metadata.model_dump_json() for metadata in public_artifacts.account_metadata or []]
+            redirect = public_artifacts.safe_redirect_if_missing or "none"
+            user_input += (
+                "Evidence Mode B:\n"
+                f"Coverage assessment: {coverage}\n"
+                f"Artifacts: {artifacts}\n"
+                f"Account metadata: {account_metadata}\n"
+                f"Safe redirect: {redirect}\n"
+            )
             
-        user_input = (
-            f"Original user query: {user_query}\n"
-            f"Coverage assessment: {coverage}\n"
-            f"Claims: {claims}\n"
-            f"Relevant projects: {projects}\n"
-            f"Safe redirect: {redirect}\n"
-            f"Refusal directive: {orchestrator_output.refusal_directive.model_dump_json()}\n"
-        )
         
-        if orchestrator_output.downstream_requests:
+        if orchestrator_output.refusal_directive.needed:
+            user_input += f"Refusal directive: {orchestrator_output.refusal_directive.model_dump_json()}\n"
+        if orchestrator_output.downstream_requests[-1].agent == DownstreamAgent.FINAL_PRESENTATION and orchestrator_output.downstream_requests:
             user_input += f"Task directive: {orchestrator_output.downstream_requests[-1].task}"
             
         return user_input
