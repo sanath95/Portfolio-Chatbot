@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import AsyncGenerator, List, Dict
-from langfuse import Langfuse, propagate_attributes
 
 from src.agents.final_presentation import FinalPresentationAgent
 from src.agents.orchestrator import OrchestratorAgent
@@ -66,7 +65,7 @@ class AgentRunner:
         # Create retrieval dependencies
         return create_retrieval_deps(retriever, self.config.retrieval)
 
-    async def process_query(self, user_query: str, conversation: List[Dict[str, str]], session_id: str) -> AsyncGenerator[AgentEventUnion, None]:
+    async def process_query(self, user_query: str, conversation: List[Dict[str, str]]) -> AsyncGenerator[AgentEventUnion, None]:
         """Process a user query through the agent pipeline.
         
         Args:
@@ -76,37 +75,31 @@ class AgentRunner:
         Returns:
             Final response text.
         """
-        langfuse = Langfuse()
-        with langfuse.start_as_current_span(name="process_query", input={"user_query": user_query}, end_on_exit=True) as root_span:
-            with propagate_attributes(session_id=session_id):
-                # Step 1: Route the query
-                orchestrator_output = await self.orchestrator.run(conversation)
-                yield OrchestratorEvent(from_=AgentSource.ORCHESTRATOR, output=orchestrator_output.model_dump_json(),)
+        # Step 1: Route the query
+        orchestrator_output = await self.orchestrator.run(conversation)
+        yield OrchestratorEvent(from_=AgentSource.ORCHESTRATOR, output=orchestrator_output.model_dump_json(),)
 
-                # Step 2: Gather evidence if needed
-                evidence_bundle = None
-                public_artifacts = None
-                for request in orchestrator_output.downstream_requests:
-                    user_prompt = self._format_prompt(
-                            user_query, request
-                        )
-                    if request.agent == DownstreamAgent.PROFESSIONAL_INFO:
-                        evidence_bundle = await self.professional_info.run(
-                            user_prompt, self.retrieval_deps
-                        )
-                        yield ProfessionalInfoEvent(from_=AgentSource.PROFESSIONAL_INFO, output=evidence_bundle.model_dump_json(),)
-                    elif request.agent == DownstreamAgent.PUBLIC_PERSONA:
-                        public_artifacts = await self.public_persona.run(
-                            user_prompt
-                        )
-                        yield PublicPersonaEvent(from_=AgentSource.PUBLIC_PERSONA, output=public_artifacts.model_dump_json())
+        # Step 2: Gather evidence if needed
+        evidence_bundle = None
+        public_artifacts = None
+        for request in orchestrator_output.downstream_requests:
+            user_prompt = self._format_prompt(
+                    user_query, request
+                )
+            if request.agent == DownstreamAgent.PROFESSIONAL_INFO:
+                evidence_bundle = await self.professional_info.run(
+                    user_prompt, self.retrieval_deps
+                )
+                yield ProfessionalInfoEvent(from_=AgentSource.PROFESSIONAL_INFO, output=evidence_bundle.model_dump_json(),)
+            elif request.agent == DownstreamAgent.PUBLIC_PERSONA:
+                public_artifacts = await self.public_persona.run(
+                    user_prompt
+                )
+                yield PublicPersonaEvent(from_=AgentSource.PUBLIC_PERSONA, output=public_artifacts.model_dump_json())
 
-                # Step 3: Stream final response
-                final_response = ""
-                async for partial_response in self.final_presentation.run(user_query, evidence_bundle, public_artifacts, orchestrator_output):
-                    final_response += partial_response
-                    yield FinalPresentationEvent(from_=AgentSource.FINAL_PRESENTATION, output=partial_response,)
-            root_span.update(output=final_response)
+        # Step 3: Stream final response
+        async for partial_response in self.final_presentation.run(user_query, evidence_bundle, public_artifacts, orchestrator_output):
+            yield FinalPresentationEvent(from_=AgentSource.FINAL_PRESENTATION, output=partial_response,)
 
     @staticmethod
     def _format_prompt(

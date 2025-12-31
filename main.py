@@ -7,14 +7,16 @@ from random import choice
 import base64
 import gradio as gr
 from string import Template
+from langfuse import Langfuse, propagate_attributes
 
 from src.agent_runner import AgentRunner
 from src.config import GradioConfig
 from src.models.schemas import AgentSource
 
 ChatHistory = list[dict[str, str]]
-GradioOutputs = tuple[gr.Textbox | dict[Any, Any], ChatHistory | dict[Any, Any], ChatHistory | dict[Any, Any]]
+GradioOutputs = tuple[gr.Textbox | dict[Any, Any], ChatHistory | dict[Any, Any], ChatHistory | dict[Any, Any], dict[int, str]]
 
+langfuse = Langfuse()
 
 class ChatbotUI:
     """Manages the Gradio UI for the portfolio chatbot."""
@@ -34,6 +36,7 @@ class ChatbotUI:
         prompt: str,
         chatbot: ChatHistory,
         conversation: ChatHistory,
+        trace_ids: dict[int, str],
         request: gr.Request,
     ) -> AsyncGenerator[GradioOutputs, None]:
         """Stream chatbot responses to the UI.
@@ -42,45 +45,58 @@ class ChatbotUI:
             prompt: User input message.
             chatbot: Chat history for display in the UI.
             conversation: Full conversation history for the agent.
+            trace_ids: Dictionary of trace ids for tracing human feedback.
+            request: Gradio Request object to generate session ids.
 
         Yields:
             Tuple of (textbox state, chatbot history, conversation history).
         """
         session_id = request.session_hash
-        if not prompt or not prompt.strip():
-            chatbot.append({"role": "assistant", "content": "Please enter a question."})
-            yield gr.Textbox(interactive=True, value=""), chatbot, conversation
-            return
+        with langfuse.start_as_current_span(name="process_query", input={"user_query": prompt}, end_on_exit=True) as root_span:
+            with propagate_attributes(session_id=session_id):
+                if not prompt or not prompt.strip():
+                    chatbot.append({"role": "assistant", "content": "Please enter a question."})
+                    yield gr.Textbox(interactive=True, value=""), chatbot, conversation, trace_ids
+                    return
 
-        # Show user message
-        chatbot.append({"role": "user", "content": prompt})
-        yield gr.Textbox(interactive=False, value=""), chatbot, gr.skip()
-        
-        # Disable input and update UI
-        thinking_messages = [
-            "🤔 Let me think about that...",
-            "💭 Gathering information...",
-            "📚 Checking my knowledge base...",
-            "⚡ Processing your question..."
-        ]
-        chatbot.append({"role": "assistant", "content": choice(thinking_messages)})
-        yield gr.skip(), chatbot, gr.skip()
-        
-        # Stream response chunks
-        chatbot[-1]["content"] = ""
-        conversation.append({"role": "user", "content": prompt})
-        async for event in self.agent.process_query(prompt, conversation, str(session_id)):
-            match event.from_:
-                case AgentSource.ORCHESTRATOR | AgentSource.PROFESSIONAL_INFO | AgentSource.PUBLIC_PERSONA:
-                    conversation.append({"role": "assistant", "content": event.output})
-                case AgentSource.FINAL_PRESENTATION:
-                    chatbot[-1]["content"] += event.output
-                    yield gr.skip(), chatbot, gr.skip()
-
-        conversation.append({"role": "assistant", "content": chatbot[-1]["content"]})
-        
-        # Re-enable input
-        yield gr.Textbox(interactive=True), gr.skip(), conversation
+                # Show user message
+                chatbot.append({"role": "user", "content": prompt})
+                yield gr.Textbox(interactive=False, value=""), chatbot, gr.skip(), gr.skip()
+                
+                # Disable input and update UI
+                thinking_messages = [
+                    "🤔 Let me think about that...",
+                    "💭 Gathering information...",
+                    "📚 Checking my knowledge base...",
+                    "⚡ Processing your question..."
+                ]
+                chatbot.append({"role": "assistant", "content": choice(thinking_messages)})
+                yield gr.skip(), chatbot, gr.skip(), gr.skip()
+                
+                # Stream response chunks
+                chatbot[-1]["content"] = ""
+                conversation.append({"role": "user", "content": prompt})
+                final_response = ""
+                async for event in self.agent.process_query(prompt, conversation):
+                    match event.from_:
+                        case AgentSource.ORCHESTRATOR | AgentSource.PROFESSIONAL_INFO | AgentSource.PUBLIC_PERSONA:
+                            conversation.append({"role": "assistant", "content": event.output})
+                        case AgentSource.FINAL_PRESENTATION:
+                            final_response += event.output
+                            chatbot[-1]["content"] += event.output
+                            yield gr.skip(), chatbot, gr.skip(), gr.skip()
+                
+                # Keep track of trace ids
+                trace_id = langfuse.get_current_trace_id()
+                if trace_id:
+                    trace_ids[len(chatbot) - 1] = trace_id
+                    
+                conversation.append({"role": "assistant", "content": final_response})
+                
+                # Re-enable input
+                yield gr.Textbox(interactive=True), gr.skip(), conversation, trace_ids
+                
+            root_span.update(output=final_response)
 
     def build_interface(self) -> gr.Blocks:
         """Build and configure the Gradio interface.
@@ -92,6 +108,7 @@ class ChatbotUI:
             self._add_header()
             
             conversation = gr.State([])
+            trace_ids = gr.State({})
             chatbot = self._create_chatbot()
             prompt = self._create_input()
             self._add_examples(prompt)
@@ -100,10 +117,11 @@ class ChatbotUI:
             # Connect event handlers
             prompt.submit(
                 self.stream_response,
-                inputs=[prompt, chatbot, conversation],
-                outputs=[prompt, chatbot, conversation],
+                inputs=[prompt, chatbot, conversation, trace_ids],
+                outputs=[prompt, chatbot, conversation, trace_ids],
                 show_progress="full"
             )
+            chatbot.like(self.handle_like, inputs=trace_ids, outputs=None)
 
 
         return demo
@@ -194,6 +212,20 @@ class ChatbotUI:
         footer_html = self.config.footer_html_path.read_text(encoding="utf-8")
         gr.HTML(footer_html)
 
+    @staticmethod
+    def handle_like(data: gr.LikeData, trace_ids: dict[int, str]) -> None:
+        """Trace human feedback -> thumbs up or thumbs down"""
+        idx = data.index
+        assert isinstance(idx, int)
+        trace_id = trace_ids.get(idx, "")
+        
+        if trace_id:
+            if data.liked:
+                langfuse.create_score(value=1, name="user-feedback", trace_id=trace_id)
+            else:
+                langfuse.create_score(value=0, name="user-feedback", trace_id=trace_id)
+        else:
+            print(f"Warning: No trace_id found for message at index {data.index}")
 
 if __name__ == "__main__":
     """Launch the portfolio chatbot."""
