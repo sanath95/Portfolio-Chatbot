@@ -75,6 +75,8 @@ class ChatbotUI:
                     conversation.append({"role": "assistant", "content": event.output})
                 case AgentSource.PROFESSIONAL_INFO:
                     conversation.append({"role": "assistant", "content": event.output})
+                case AgentSource.PUBLIC_PERSONA:
+                    conversation.append({"role": "assistant", "content": event.output})
                 case AgentSource.FINAL_PRESENTATION:
                     chatbot[-1]["content"] += event.output
                     yield gr.skip(), chatbot, gr.skip()
