@@ -180,7 +180,8 @@ class ChatbotUI:
                 "Introduce Sanath in a few short sentences.",
                 "What was his final grade in his master's program?",
                 "Summarize his generative AI work and list the tools used.",
-                "Show me a card trick."
+                "Show me a card trick.",
+                "How can I contact Sanath?"
             ],
             inputs=input_textbox,
         )
