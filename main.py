@@ -139,11 +139,10 @@ class ChatbotUI:
             Every response is grounded in verified source documents, enhanced through an agentic retrieval pipeline, and transparently traced.
 
             You can ask about:
-            - Technical skills and domains
-            - Project details and design decisions
-            - Research, reports, and hands-on implementations
+            - Technical skills
+            - Project details
             - Career background and professional focus
-            - Hobbies and interests.
+            - Hobbies and interests
             """
         return gr.Chatbot(
             [
