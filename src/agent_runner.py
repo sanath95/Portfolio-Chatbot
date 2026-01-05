@@ -65,7 +65,7 @@ class AgentRunner:
         # Create retrieval dependencies
         return create_retrieval_deps(retriever, self.config.retrieval)
 
-    async def process_query(self, user_query: str, conversation: List[Dict[str, str]]) -> AsyncGenerator[AgentEventUnion, None]:
+    async def process_query(self, user_query: str, conversation: List[Dict[str, str]], trace_id: str) -> AsyncGenerator[AgentEventUnion, None]:
         """Process a user query through the agent pipeline.
         
         Args:
@@ -76,7 +76,7 @@ class AgentRunner:
             Final response text.
         """
         # Step 1: Route the query
-        orchestrator_output = await self.orchestrator.run(conversation)
+        orchestrator_output = await self.orchestrator.run(conversation, trace_id)
         yield OrchestratorEvent(from_=AgentSource.ORCHESTRATOR, output=orchestrator_output.model_dump_json(),)
 
         # Step 2: Gather evidence if needed
@@ -88,17 +88,17 @@ class AgentRunner:
                 )
             if request.agent == DownstreamAgent.PROFESSIONAL_INFO:
                 evidence_bundle = await self.professional_info.run(
-                    user_prompt, self.retrieval_deps
+                    user_prompt, self.retrieval_deps, trace_id
                 )
                 yield ProfessionalInfoEvent(from_=AgentSource.PROFESSIONAL_INFO, output=evidence_bundle.model_dump_json(),)
             elif request.agent == DownstreamAgent.PUBLIC_PERSONA:
                 public_artifacts = await self.public_persona.run(
-                    user_prompt
+                    user_prompt, trace_id
                 )
                 yield PublicPersonaEvent(from_=AgentSource.PUBLIC_PERSONA, output=public_artifacts.model_dump_json())
 
         # Step 3: Stream final response
-        async for partial_response in self.final_presentation.run(user_query, evidence_bundle, public_artifacts, orchestrator_output):
+        async for partial_response in self.final_presentation.run(user_query, evidence_bundle, public_artifacts, orchestrator_output, trace_id):
             yield FinalPresentationEvent(from_=AgentSource.FINAL_PRESENTATION, output=partial_response,)
 
     @staticmethod

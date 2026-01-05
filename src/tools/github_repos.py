@@ -22,7 +22,7 @@ async def fetch_project_repos(url: str) -> str:
     """
     token = getenv("GITHUB_TOKEN")
     if not token:
-        raise RuntimeError("GITHUB_TOKEN environment variable not set")
+        return dumps({"error": "Could not fetch any Github repositories"})
 
     headers = {
         "Accept": "application/vnd.github+json",

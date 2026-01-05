@@ -40,7 +40,7 @@ class ProjectsVectorStore:
         Returns:
             Initialized QdrantVectorStore instance.
         """
-        client = QdrantClient(url=self.config.url, port=self.config.port)
+        client = QdrantClient(url=self.config.url, api_key=self.config.api_key)
         try:
             if client.collection_exists(self.config.collection_name):
                 return self._load()
@@ -71,7 +71,7 @@ class ProjectsVectorStore:
             embedding=self.embedding,
             collection_name=self.config.collection_name,
             url=self.config.url,
-            port=self.config.port,
+            api_key=self.config.api_key
         )
 
     def _load(self) -> QdrantVectorStore:
@@ -84,5 +84,5 @@ class ProjectsVectorStore:
             embedding=self.embedding,
             collection_name=self.config.collection_name,
             url=self.config.url,
-            port=self.config.port,
+            api_key=self.config.api_key
         )

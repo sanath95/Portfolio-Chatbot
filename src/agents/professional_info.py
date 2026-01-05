@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from pydantic_ai import Agent, RunContext, ModelSettings
-from langfuse import observe, get_client
 from pymupdf import open as pdfopen
 
 from src.config import AgentConfig
 from src.models.schemas import EvidenceBundle
 from src.tools.retrieval import RetrievalDeps, retrieve_and_rerank
 from src.tools.github_repos import fetch_project_repos
+from src.utils.gcp_buckets import GCSHelper
+from src.utils.langfuse_client import get_langfuse_client
 
 
 class ProfessionalInfoAgent:
@@ -32,14 +33,14 @@ class ProfessionalInfoAgent:
             config: Agent configuration.
         """
         self.config = config.professional_info
-        self.langfuse_client = get_client()
+        self.gcs = GCSHelper()
+        self.langfuse_client = get_langfuse_client()
         self.instructions = self._load_instructions()
         self.agent: Agent[RetrievalDeps, EvidenceBundle] = self._create_agent()
         self._register_tools()
 
-    @observe(name="professional_info_agent", capture_input=True, capture_output=True)
     async def run(
-        self, user_prompt: str, deps: RetrievalDeps
+        self, user_prompt: str, deps: RetrievalDeps, trace_id: str
     ) -> EvidenceBundle:
         """Run the agent with a user prompt.
         
@@ -50,11 +51,21 @@ class ProfessionalInfoAgent:
         Returns:
             Evidence bundle with claims and coverage assessment.
         """
-        self.langfuse_client.update_current_span(metadata={"professional_info_instructions": self.instructions, "user_prompt": user_prompt})
+        generation = self.langfuse_client.generation(
+            trace_id=trace_id,
+            name="professional_info_retrieval",
+            model=self.config.model,
+            input={"user_prompt": user_prompt},
+            metadata={"agent": "professional_info", "instructions": self.instructions}
+        )
+        deps.trace_id = trace_id
         result = await self.agent.run(
             instructions=self.instructions,
             user_prompt=user_prompt,
             deps=deps,
+        )
+        generation.end(
+            output=result.output.model_dump()
         )
         return result.output
 
@@ -74,9 +85,8 @@ class ProfessionalInfoAgent:
     def _register_tools(self) -> None:
         """Register tools with the agent."""
 
-        @self.agent.tool_plain
-        @observe(name="resume", capture_input=True, capture_output=True)
-        def read_resume() -> str:
+        @self.agent.tool
+        def read_resume(context: RunContext[RetrievalDeps]) -> str:
             """Return the full text of Sanath’s resume.
 
             Use this tool when you need:
@@ -91,11 +101,22 @@ class ProfessionalInfoAgent:
             Returns:
                 resume: Full text of Sanath’s resume.
             """
-            return self.config.tool_config.resume_path.read_text(encoding="utf-8")
+            trace_id = context.deps.trace_id
+            span = self.langfuse_client.span(
+                trace_id=trace_id,
+                name="resume",
+                input={},
+                metadata={"tool": "read_resume"}
+            )
+            resume = self.gcs.download_as_text(
+                bucket_name=self.config.gcs_bucket,
+                blob_path=self.config.tool_config.resume_path
+            )
+            span.end(output=resume)
+            return resume
         
-        @self.agent.tool_plain
-        @observe(name="resume_old", capture_input=True, capture_output=True)
-        def read_old_resume() -> str:
+        @self.agent.tool
+        def read_old_resume(context: RunContext[RetrievalDeps]) -> str:
             """Return the full text of Sanath's old resume.
 
             Use this tool when you need:
@@ -104,13 +125,24 @@ class ProfessionalInfoAgent:
             Returns:
                 old_resume: Full text of Sanath's old resume.
             """
-            with pdfopen(self.config.tool_config.old_resume_path) as doc:
+            trace_id = context.deps.trace_id
+            span = self.langfuse_client.span(
+                trace_id=trace_id,
+                name="old_resume",
+                input={},
+                metadata={"tool": "read_old_resume"}
+            )
+            pdf_stream = self.gcs.download_to_stream(
+                bucket_name=self.config.gcs_bucket,
+                blob_path=self.config.tool_config.old_resume_path
+            )
+            with pdfopen(stream=pdf_stream) as doc:
                 old_resume = "\n".join(str(page.get_text("text")) for page in doc)
+            span.end(output=old_resume)
             return old_resume
         
-        @self.agent.tool_plain
-        @observe(name="transcript_of_records", capture_input=True, capture_output=True)
-        def read_transcript_of_records() -> str:
+        @self.agent.tool
+        def read_transcript_of_records(context: RunContext[RetrievalDeps]) -> str:
             """Return the full text of Sanath's master's degree transcript of records.
 
             Use this tool when you need:
@@ -119,13 +151,24 @@ class ProfessionalInfoAgent:
             Returns:
                 transcript_of_records: Full text of Sanath's transcript of records.
             """
-            with pdfopen(self.config.tool_config.transcript_of_records_path) as doc:
+            trace_id = context.deps.trace_id
+            span = self.langfuse_client.span(
+                trace_id=trace_id,
+                name="transcript",
+                input={},
+                metadata={"tool": "read_transcript_of_records"}
+            )
+            pdf_stream = self.gcs.download_to_stream(
+                bucket_name=self.config.gcs_bucket,
+                blob_path=self.config.tool_config.transcript_of_records_path
+            )
+            with pdfopen(stream=pdf_stream) as doc:
                 transcript_of_records = "\n".join(str(page.get_text("text")) for page in doc)
+            span.end(output=transcript_of_records)
             return transcript_of_records
 
-        @self.agent.tool_plain
-        @observe(name="about_sanath", capture_input=True, capture_output=True)
-        def read_about_sanath() -> str:
+        @self.agent.tool
+        def read_about_sanath(context: RunContext[RetrievalDeps]) -> str:
             """Return the narrative 'About Sanath' profile text.
 
             Use this tool when you need:
@@ -141,20 +184,39 @@ class ProfessionalInfoAgent:
             Returns:
                 about_me: Narrative profile text about Sanath.
             """
-            return self.config.tool_config.about_me_path.read_text(encoding="utf-8")
+            trace_id = context.deps.trace_id
+            span = self.langfuse_client.span(
+                trace_id=trace_id,
+                name="about_sanath",
+                input={},
+                metadata={"tool": "read_about_sanath"}
+            )
+            about_me = self.gcs.download_as_text(
+                bucket_name=self.config.gcs_bucket,
+                blob_path=self.config.tool_config.about_me_path
+            )
+            span.end(output=about_me)
+            return about_me
 
         
-        @self.agent.tool_plain
-        @observe(name="github_repos", capture_input=True, capture_output=True)
-        async def fetch_github_repos() -> str:
+        @self.agent.tool
+        async def fetch_github_repos(context: RunContext[RetrievalDeps]) -> str:
             """Fetch Sanath's GitHub repositories for project linking.
     
             This tool returns a JSON list of repository metadata including name, description, and GitHub URL.
             """
-            return await fetch_project_repos(self.config.tool_config.github_repos_endpoint)
+            trace_id = context.deps.trace_id
+            span = self.langfuse_client.span(
+                trace_id=trace_id,
+                name="github",
+                input={},
+                metadata={"tool": "fetch_github_repos"}
+            )
+            repos = await fetch_project_repos(self.config.tool_config.github_repos_endpoint)
+            span.end(output=repos)
+            return repos
 
         @self.agent.tool
-        @observe(name="retrieve", capture_input=True, capture_output=True)
         async def retrieve(
             context: RunContext[RetrievalDeps], search_query: str
         ) -> list[str]:
@@ -194,7 +256,16 @@ class ProfessionalInfoAgent:
             Returns:
                 ranked_docs: List of relevant text chunks from Sanath’s portfolio documents.
             """
-            return await retrieve_and_rerank(context.deps, search_query)
+            trace_id = context.deps.trace_id
+            span = self.langfuse_client.span(
+                trace_id=trace_id,
+                name="retrieve",
+                input=search_query,
+                metadata={"tool": "retrieve"}
+            )
+            ranked_docs = await retrieve_and_rerank(context.deps, search_query)
+            span.end(output=ranked_docs)
+            return ranked_docs
 
     def _load_instructions(self) -> str:
         """Load system instructions from langfuse or file.
@@ -205,4 +276,7 @@ class ProfessionalInfoAgent:
         try:
             return self.langfuse_client.get_prompt(self.config.langfuse_key).prompt
         except:
-            return self.config.instructions_path.read_text(encoding="utf-8")
+            return self.gcs.download_as_text(
+                bucket_name=self.config.gcs_bucket,
+                blob_path=self.config.blob_name
+            )

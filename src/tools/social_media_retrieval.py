@@ -92,7 +92,7 @@ async def get_youtube_videos():
         client_secret=client_secret,
         token_uri=token_uri
     )
-    if not access_token or refresh_token or client_id or client_secret or token_uri:
+    if not access_token or not refresh_token or not client_id or not client_secret or not token_uri:
         return dumps({"error": "Could not retrieve any content."})
 
     if not creds.valid and creds.refresh_token:

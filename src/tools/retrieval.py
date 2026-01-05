@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from langchain_core.vectorstores import VectorStoreRetriever
 from sentence_transformers import CrossEncoder
+from pydantic import Field
 
 from src.config import RetrievalConfig
 
@@ -22,6 +23,7 @@ class RetrievalDeps:
     retriever: VectorStoreRetriever
     reranker: CrossEncoder
     config: RetrievalConfig
+    trace_id: str = Field(default="")
 
 
 async def retrieve_and_rerank(

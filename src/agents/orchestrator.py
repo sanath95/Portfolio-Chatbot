@@ -5,10 +5,11 @@ from __future__ import annotations
 from typing import List, Dict, cast
 from openai import AsyncOpenAI
 from openai.types.responses import ResponseInputParam
-from langfuse import observe, get_client
 
 from src.config import AgentConfig
 from src.models.schemas import OrchestratorRoute
+from src.utils.gcp_buckets import GCSHelper
+from src.utils.langfuse_client import get_langfuse_client
 
 
 class OrchestratorAgent:
@@ -32,11 +33,11 @@ class OrchestratorAgent:
         """
         self.config = config.orchestrator
         self.client = AsyncOpenAI()
-        self.langfuse_client = get_client()
+        self.gcs = GCSHelper()
+        self.langfuse_client = get_langfuse_client()
         self.instructions = self._load_instructions()
 
-    @observe(name="orchestrator_agent", capture_input=True, capture_output=True)
-    async def run(self, conversation: List[Dict[str, str]]) -> OrchestratorRoute:
+    async def run(self, conversation: List[Dict[str, str]], trace_id: str) -> OrchestratorRoute:
         """Process a user message and determine routing.
         
         Args:
@@ -48,7 +49,13 @@ class OrchestratorAgent:
         Raises:
             Exception: If the agent fails to parse the response.
         """
-        self.langfuse_client.update_current_span(metadata={"orchestrator_instructions": self.instructions})
+        generation = self.langfuse_client.generation(
+            trace_id=trace_id,
+            name="orchestrator_routing",
+            model=self.config.model,
+            input=conversation,
+            metadata={"agent": "orchestrator", "instructions": self.instructions}
+        )
         response = await self.client.responses.parse(
             model=self.config.model,
             instructions=self.instructions,
@@ -57,8 +64,12 @@ class OrchestratorAgent:
             reasoning={"effort": "high"}
         )
 
-        if response.output_parsed:
-            return response.output_parsed
+        result = response.output_parsed
+        if result:
+            generation.end(
+                output=result.model_dump(),
+            )
+            return result
 
         raise Exception(f"OrchestratorAgent failed to parse response: {response}")
 
@@ -71,4 +82,7 @@ class OrchestratorAgent:
         try:
             return self.langfuse_client.get_prompt(self.config.langfuse_key).prompt
         except:
-            return self.config.instructions_path.read_text(encoding="utf-8")
+            return self.gcs.download_as_text(
+                bucket_name=self.config.gcs_bucket,
+                blob_path=self.config.blob_name
+            )

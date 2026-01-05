@@ -11,10 +11,12 @@ from docling.datamodel.accelerator_options import AcceleratorDevice, Accelerator
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import EasyOcrOptions, PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
+from docling_core.types.io import DocumentStream
 from langchain_core.documents import Document
 from langchain_text_splitters import MarkdownHeaderTextSplitter
 
 from src.config import ProcessorConfig
+from src.utils.gcp_buckets import GCSHelper
 
 
 class FileProcessor:
@@ -34,8 +36,9 @@ class FileProcessor:
         Args:
             config: Processor configuration.
         """
+        self.gcs = GCSHelper()
         self.config = config
-        self.files = glob(str(config.input_glob))
+        self.files = self.gcs.list_blobs(self.config.gcs_bucket, self.config.prefix)
         self.metadata_config = self._load_metadata_config()
         self.splitter = self._create_markdown_splitter()
         self.pdf_converter = self._create_pdf_converter()
@@ -60,10 +63,9 @@ class FileProcessor:
         Returns:
             List of processed Document objects with enriched content and metadata.
         """
-        path = Path(file_path)
-        markdown_text = self._to_markdown(path)
+        markdown_text = self._to_markdown(file_path)
         docs = self.splitter.split_text(markdown_text)
-        return self._enrich_documents(docs, path.name)
+        return self._enrich_documents(docs, Path(file_path).name)
 
     def _enrich_documents(
         self, docs: list[Document], file_name: str
@@ -95,7 +97,7 @@ class FileProcessor:
 
         return docs
 
-    def _to_markdown(self, path: Path) -> str:
+    def _to_markdown(self, path: str) -> str:
         """Convert a file to Markdown text.
         
         Args:
@@ -107,13 +109,14 @@ class FileProcessor:
         Raises:
             ValueError: If the file format is unsupported.
         """
-        if path.suffix == ".pdf":
-            result = self.pdf_converter.convert(str(path))
+        if path.endswith(".pdf"):
+            pdf_stream = self.gcs.download_to_stream(self.config.gcs_bucket, str(path))
+            result = self.pdf_converter.convert(DocumentStream(name=str(path), stream=pdf_stream))
             return result.document.export_to_markdown()
-        elif path.suffix == ".md":
-            return path.read_text(encoding="utf-8")
+        elif path.endswith(".md"):
+            return self.gcs.download_as_text(self.config.gcs_bucket, str(path))
         else:
-            raise ValueError(f"Unsupported file format: {path.suffix}")
+            raise ValueError(f"Unsupported file format: {path}")
 
     def _load_metadata_config(self) -> dict[str, dict[str, Any]]:
         """Load per-file metadata configuration.
@@ -156,7 +159,7 @@ class FileProcessor:
                         do_table_structure=False,
                         accelerator_options=AcceleratorOptions(
                             num_threads=self.config.num_threads,
-                            device=AcceleratorDevice.CUDA,
+                            device=AcceleratorDevice.CPU,
                         ),
                     )
                 )

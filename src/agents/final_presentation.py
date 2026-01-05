@@ -4,10 +4,11 @@ from __future__ import annotations
 from typing import AsyncGenerator
 
 from openai import AsyncOpenAI
-from langfuse import observe, get_client
 
 from src.config import AgentConfig
 from src.models.schemas import DownstreamAgent, EvidenceBundle, OrchestratorRoute, PublicArtifacts
+from src.utils.gcp_buckets import GCSHelper
+from src.utils.langfuse_client import get_langfuse_client
 
 
 class FinalPresentationAgent:
@@ -31,16 +32,17 @@ class FinalPresentationAgent:
         """
         self.config = config.final_presentation
         self.client = AsyncOpenAI()
-        self.langfuse_client = get_client()
+        self.gcs = GCSHelper()
+        self.langfuse_client = get_langfuse_client()
         self.instructions = self._load_instructions()
 
-    @observe(name="final_presentation_agent", capture_input=True, capture_output=True)
     async def run(
         self,
         user_query: str,
         evidence_bundle: EvidenceBundle | None,
         public_artifacts: PublicArtifacts | None,
         orchestrator_output: OrchestratorRoute,
+        trace_id: str,
     ) -> AsyncGenerator[str, None]:
         """Stream the final response from evidence and routing decisions.
         
@@ -56,8 +58,15 @@ class FinalPresentationAgent:
         # Format input for the agent
         input_content = self._format_input(
             user_query, evidence_bundle, public_artifacts, orchestrator_output
+        )        
+        generation = self.langfuse_client.generation(
+            trace_id=trace_id,
+            name="final_presentation_generation",
+            model=self.config.model,
+            input=input_content,
+            metadata={"agent": "final_presentation", "instructions": self.instructions}
         )
-        self.langfuse_client.update_current_span(metadata={"final_presentation_instructions": self.instructions, "user_prompt": input_content})
+        full_output = ""
         async with self.client.responses.stream(
             model=self.config.model,
             instructions=self.instructions,
@@ -71,8 +80,10 @@ class FinalPresentationAgent:
         ) as stream:
             async for event in stream:
                 if event.type == "response.output_text.delta":
+                    full_output += event.delta
                     yield event.delta
                 if event.type == "response.completed":
+                    generation.end(output=full_output)
                     break
 
     def _format_input(
@@ -136,4 +147,7 @@ class FinalPresentationAgent:
         try:
             return self.langfuse_client.get_prompt(self.config.langfuse_key).prompt
         except:
-            return self.config.instructions_path.read_text(encoding="utf-8")
+            return self.gcs.download_as_text(
+                bucket_name=self.config.gcs_bucket,
+                blob_path=self.config.blob_name
+            )

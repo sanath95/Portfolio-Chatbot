@@ -4,12 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-
-from dotenv import load_dotenv
-
-load_dotenv()
-
-
+from os import getenv
+import dotenv
+dotenv.load_dotenv()
 @dataclass(frozen=True)
 class VectorStoreConfig:
     """Configuration for Qdrant vector store.
@@ -20,8 +17,8 @@ class VectorStoreConfig:
         collection_name: Name of the collection to use.
         embedding_model: OpenAI embedding model identifier.
     """
-    url: str = "http://localhost:6333"
-    port: int = 6333
+    url: str = getenv("QDRANT_URL", "")
+    api_key: str = getenv("QDRANT_API_KEY", "")
     collection_name: str = "sanath_projects"
     embedding_model: str = "text-embedding-3-small"
 
@@ -35,14 +32,16 @@ class ProcessorConfig:
         config_path: Path to JSON metadata configuration.
         num_threads: Number of threads for PDF processing.
     """
-    input_glob: str = "./data/*"
+    gcs_bucket: str = getenv("GCS_BUCKET", "my-portfolio-chatbot-bucket")
+    prefix: str ="data"
     config_path: Path = Path("./configs/data_config.json")
     num_threads: int = 4
 
 @dataclass(frozen=True)
 class AgentProfile:
     model: str
-    instructions_path: Path
+    gcs_bucket: str
+    blob_name: str
     langfuse_key: str
     
 @dataclass(frozen=True)
@@ -55,10 +54,10 @@ class PublicPersonaProfile(AgentProfile):
 
 @dataclass(frozen=True)
 class ProfessionalInfoToolConfig:
-    resume_path: Path = Path("./prompts/Sanath Vijay Haritsa - CV.tex")
-    about_me_path: Path = Path("./prompts/Sanath Vijay Haritsa - About Me.md")
-    old_resume_path: Path = Path("./prompts/Sanath Vijay Haritsa - Old CV.pdf")
-    transcript_of_records_path: Path = Path("./prompts/Sanath Vijay Haritsa - Transcript of Records.pdf")
+    resume_path: str = "documents/Sanath Vijay Haritsa - CV.tex"
+    about_me_path: str = "documents/Sanath Vijay Haritsa - About Me.md"
+    old_resume_path: str = "documents/Sanath Vijay Haritsa - Old CV.pdf"
+    transcript_of_records_path: str = "documents/Sanath Vijay Haritsa - Transcript of Records.pdf"
     github_repos_endpoint: str = "https://api.github.com/users/sanath95/repos"
     
 @dataclass(frozen=True)
@@ -74,28 +73,32 @@ class AgentConfig:
 
     orchestrator: AgentProfile = AgentProfile(
         model="o3-mini",
-        instructions_path=Path("./prompts/orchestrator.txt"),
-        langfuse_key="instructions/orchestrator"
+        gcs_bucket=getenv("GCS_BUCKET", "my-portfolio-chatbot-bucket"),
+        blob_name="prompts/orchestrator.txt",
+        langfuse_key="orchestrator"
     )
 
     professional_info: ProfessionalInfoProfile = ProfessionalInfoProfile(
         model="gpt-5.2",
-        instructions_path=Path("./prompts/professional_info.txt"),
-        langfuse_key="instructions/professional_info",
+        gcs_bucket=getenv("GCS_BUCKET", "my-portfolio-chatbot-bucket"),
+        blob_name="prompts/professional_info.txt",
+        langfuse_key="professional_info",
         tool_config=ProfessionalInfoToolConfig()
     )
     
     public_persona: PublicPersonaProfile = PublicPersonaProfile(
         model="gpt-5.2",
-        instructions_path=Path("./prompts/public_persona.txt"),
-        langfuse_key="instructions/public_persona",
+        gcs_bucket=getenv("GCS_BUCKET", "my-portfolio-chatbot-bucket"),
+        blob_name="prompts/public_persona.txt",
+        langfuse_key="public_persona",
         tool_config=PublicPersonaToolConfig()
     )
 
     final_presentation: AgentProfile = AgentProfile(
         model="gpt-5-mini",
-        instructions_path=Path("./prompts/final_presentation.txt"),
-        langfuse_key="instructions/final_presentation",
+        gcs_bucket=getenv("GCS_BUCKET", "my-portfolio-chatbot-bucket"),
+        blob_name="prompts/final_presentation.txt",
+        langfuse_key="final_presentation",
     )
 
 @dataclass(frozen=True)
