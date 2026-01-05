@@ -5,8 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from os import getenv
-import dotenv
-dotenv.load_dotenv()
+
 @dataclass(frozen=True)
 class VectorStoreConfig:
     """Configuration for Qdrant vector store.
