@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from os import getenv
 
 from dotenv import load_dotenv
 
@@ -20,8 +21,8 @@ class VectorStoreConfig:
         collection_name: Name of the collection to use.
         embedding_model: OpenAI embedding model identifier.
     """
-    url: str = "http://localhost:6333"
-    port: int = 6333
+    url: str = getenv("QDRANT_URL", "")
+    port: int = int(getenv("QDRANT_PORT", ""))
     collection_name: str = "sanath_projects"
     embedding_model: str = "text-embedding-3-small"
 
