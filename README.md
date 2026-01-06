@@ -57,7 +57,7 @@ Overall, the design emphasizes separation of concerns, controlled agent hand-off
 * **Production-ready deployment**
   Fully containerized using Docker and deployed on Google Cloud Run, demonstrating real-world readiness with scalable infrastructure and clean separation between build and runtime stages.
 
-> NOTE: This document focuses on local deployment. For containerization and cloud deployment, refer to [deploy/gcp](https://github.com/sanath95/Portfolio-Chatbot/tree/deploy/gcp) branch.
+> NOTE: This branch focuses on local deployment. For code changes, containerization and cloud deployment, refer to [deploy/gcp](https://github.com/sanath95/Portfolio-Chatbot/tree/deploy/gcp) branch.
 
 ## Folder Structure
 
