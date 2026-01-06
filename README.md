@@ -57,7 +57,7 @@ Overall, the design emphasizes separation of concerns, controlled agent hand-off
 * **Production-ready deployment**
   Fully containerized using Docker and deployed on Google Cloud Run, demonstrating real-world readiness with scalable infrastructure and clean separation between build and runtime stages.
 
-> NOTE: This document focuses on local deployment. For containerization and cloud deployment, refer to [deploy/gcp](https://github.com/sanath95/Portfolio-Chatbot/tree/deploy/gcp) branch.
+> NOTE: This branch focuses on local deployment. For code changes, containerization and cloud deployment, refer to [deploy/gcp](https://github.com/sanath95/Portfolio-Chatbot/tree/deploy/gcp) branch.
 
 ## Folder Structure
 
@@ -121,5 +121,52 @@ Overall, the design emphasizes separation of concerns, controlled agent hand-off
 ```bash
 uv run main.py
 ```
+
+## Deployment
+
+The deployment setup introduces several changes compared to local development to support scalability, security, and cloud-native operation:
+
+1. **Qdrant Cloud integration**
+   Qdrant is deployed as a managed cloud service instead of running locally. This requires a `QDRANT_API_KEY` rather than a local `QDRANT_PORT`.
+
+2. **Langfuse deployment on Google Cloud Platform**
+   Langfuse is deployed on GCP and backed by **Cloud SQL (PostgreSQL)** for trace and metadata storage.
+
+3. **Minimal Langfuse setup**
+   The deployment uses the Langfuse v2 Docker image along with the Python SDK (v2.60.10) to keep the observability stack lightweight.
+
+4. **Cloud-based document storage**
+   Supporting documents such as resumes and academic transcripts are stored and read from **Google Cloud Storage buckets**.
+
+5. **Cloud-specific utilities**
+   Additional utility modules are included for interacting with Google Cloud Storage and for initializing the Langfuse client in a cloud environment.
+
+6. **Separated indexing pipeline**
+   A dedicated `index.py` entry point is introduced to decouple document indexing from chatbot runtime deployment.
+
+7. **Secure build-time secrets for indexing**
+   Environment variables required for indexing are injected using **Docker BuildKit secrets** to avoid leaking credentials into image layers.
+
+8. **Runtime secrets management**
+   Secrets required by the chatbot at runtime are sourced from **Google Secret Manager**.
+
+9. **Indexing documents into Qdrant Cloud**
+   Run the following command to build the indexing image and populate the Qdrant Cloud vector store:
+
+   ```bash
+   docker build \
+     --secret id=QDRANT_URL,env=QDRANT_URL \
+     --secret id=QDRANT_API_KEY,env=QDRANT_API_KEY \
+     --secret id=OPENAI_API_KEY,env=OPENAI_API_KEY \
+     --no-cache \
+     --target indexer .
+   ```
+
+10. **Building the chatbot runtime image**
+    After indexing is complete, build the chatbot runtime image:
+
+    ```bash
+    docker build --no-cache --target runtime -t portfolio-chatbot:latest .
+    ```
 
 ---
