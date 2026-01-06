@@ -21,21 +21,6 @@ class VectorStoreConfig:
     collection_name: str = "sanath_projects"
     embedding_model: str = "text-embedding-3-small"
 
-
-@dataclass(frozen=True)
-class ProcessorConfig:
-    """Configuration for document processing.
-    
-    Attributes:
-        input_glob: Glob pattern for input files.
-        config_path: Path to JSON metadata configuration.
-        num_threads: Number of threads for PDF processing.
-    """
-    gcs_bucket: str = getenv("GCS_BUCKET", "my-portfolio-chatbot-bucket")
-    prefix: str ="data"
-    config_path: Path = Path("./configs/data_config.json")
-    num_threads: int = 4
-
 @dataclass(frozen=True)
 class AgentProfile:
     model: str
@@ -127,7 +112,6 @@ class AppConfig:
         langfuse: Langfuse tracking configuration.
     """
     vector_store: VectorStoreConfig = VectorStoreConfig()
-    processor: ProcessorConfig = ProcessorConfig()
     agent: AgentConfig = AgentConfig()
     retrieval: RetrievalConfig = RetrievalConfig()
     

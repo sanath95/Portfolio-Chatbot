@@ -52,7 +52,6 @@ class AgentRunner:
         # Initialize vector store
         vector_store_manager = ProjectsVectorStore(
             self.config.vector_store,
-            self.config.processor,
         )
         vector_store = vector_store_manager.get_vector_store()
 

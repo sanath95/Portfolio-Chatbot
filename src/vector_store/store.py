@@ -7,8 +7,7 @@ from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 from qdrant_client.http.exceptions import ResponseHandlingException
 
-from src.config import ProcessorConfig, VectorStoreConfig
-from src.vector_store.processor import FileProcessor
+from src.config import VectorStoreConfig
 
 
 class ProjectsVectorStore:
@@ -22,16 +21,13 @@ class ProjectsVectorStore:
     def __init__(
         self,
         config: VectorStoreConfig,
-        processor_config: ProcessorConfig | None = None,
     ) -> None:
         """Initialize vector store configuration.
         
         Args:
             config: Vector store configuration.
-            processor_config: Document processor configuration (for creating new stores).
         """
         self.config = config
-        self.processor_config = processor_config
         self.embedding = OpenAIEmbeddings(model=config.embedding_model)
 
     def get_vector_store(self) -> QdrantVectorStore:
@@ -45,34 +41,9 @@ class ProjectsVectorStore:
             if client.collection_exists(self.config.collection_name):
                 return self._load()
             else:
-                return self._create()
-        except ResponseHandlingException:
-            raise Exception("Qdrant DB not running!")
-
-    def _create(self) -> QdrantVectorStore:
-        """Create a new Qdrant collection from processed documents.
-        
-        Returns:
-            Newly created QdrantVectorStore.
-            
-        Raises:
-            ValueError: If processor_config is not provided.
-        """
-        if self.processor_config is None:
-            raise ValueError(
-                "processor_config must be provided to create a new vector store"
-            )
-
-        processor = FileProcessor(self.processor_config)
-        documents = processor.build_documents()
-
-        return QdrantVectorStore.from_documents(
-            documents=documents,
-            embedding=self.embedding,
-            collection_name=self.config.collection_name,
-            url=self.config.url,
-            api_key=self.config.api_key
-        )
+                raise Exception("Collection does not exist!")
+        except ResponseHandlingException as e:
+            raise Exception(f"Qdrant DB not running! {e}")
 
     def _load(self) -> QdrantVectorStore:
         """Load an existing Qdrant collection.

@@ -16,12 +16,6 @@ from src.utils.langfuse_client import get_langfuse_client
 
 ChatHistory = list[dict[str, str]]
 GradioOutputs = tuple[gr.Textbox | dict[Any, Any], ChatHistory | dict[Any, Any], ChatHistory | dict[Any, Any], dict[int, str]]
-import warnings
-
-warnings.filterwarnings(
-    "ignore",
-    message=".*pin_memory.*no accelerator.*"
-)
 
 class ChatbotUI:
     """Manages the Gradio UI for the portfolio chatbot."""
