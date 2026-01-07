@@ -50,5 +50,9 @@
     "Working Student Report.pdf": {
         "tools_used": ["Python", "Jira", "Vertex AI", "RAG", "AI Agents", "LangChain", "LangGraph", "LlamaIndex", "n8n", "MLFlow", "Git", "Docker"], 
         "skills": ["generative ai", "prompt engineering", "RAG", "AI Agents", "large language models", "NLP", "data engineering", "MLOps", "workflow automation", "Agentic RAG", "communication", "teamwork", "code documentation", "evaluation", "benchmarking"]
+    },
+    "Portfolio Chatbot.md": {
+        "tools_used": ["Docling", "EasyOCR", "PydanticAI", "LangChain", "OpenAI API", "Qdrant Vector Store", "Gradio", "Langfuse", "Docker", "Google Cloud Platform"],
+        "skills": ["Agentic system design", "multi-agent coordination", "Retrieval Augmented Generation RAG", "Embeddings", "Vector store", "Prompt design", "safety and guardrails","Evaluation using LLM-as-a-Judge", "regression testing", "Observability", "Containerization"]
     }
 }
