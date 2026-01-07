@@ -122,6 +122,18 @@ Overall, the design emphasizes separation of concerns, controlled agent hand-off
 uv run main.py
 ```
 
+## 𝗧𝗼𝗼𝗹𝘀
+Docling, EasyOCR, PydanticAI, LangChain, OpenAI API, Qdrant Vector Store, Gradio, Langfuse, Docker, and Google Cloud Platform.
+
+## 𝗙𝘂𝘁𝘂𝗿𝗲 𝘀𝗰𝗼𝗽𝗲
+1. Automated offline & online evaluation
+2. Long-term memory for a continuously evolving system
+
+## Try It Out
+* [Click here](https://chatbot-566360013332.europe-west3.run.app/) to have a chat.
+* Responses take ~30–60 seconds — please be patient
+* UI is not responsive yet; best viewed on a laptop
+
 ## Deployment
 
 The deployment setup introduces several changes compared to local development to support scalability, security, and cloud-native operation:
